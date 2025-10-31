@@ -1,0 +1,109 @@
+/**
+ * استایل‌های اصلی و عمومی
+ */
+
+/* Reset و تنظیمات پایه */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    font-size: 16px;
+    scroll-behavior: smooth;
+}
+
+body {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    font-family: 'Vazir', Tahoma, sans-serif;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    line-height: 1.6;
+    color: #333;
+    gap: 0;
+}
+
+/* مخفی کردن تبلیغات TinyMCE */
+.tox-promotion {
+    display: none !important;
+}
+
+/* Container اصلی */
+.editor-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: #fff;
+    border-radius: 12px;
+    margin: 10px;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+/* Responsive Layout */
+@media (max-width: 1400px) {
+    .seo-panel {
+        width: 350px;
+    }
+}
+
+@media (max-width: 1200px) {
+    body {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+        gap: 0;
+    }
+    
+    .editor-container {
+        margin: 5px;
+        margin-bottom: 0;
+        border-radius: 12px;
+    }
+    
+    .seo-panel {
+        width: 100% !important;
+        max-height: 60vh;
+        border-radius: 12px 12px 0 0;
+        margin: 0 5px 5px 5px;
+    }
+}
+
+@media (max-width: 768px) {
+    html {
+        font-size: 14px;
+    }
+    
+    .editor-container {
+        margin: 3px;
+        margin-bottom: 0;
+        border-radius: 10px;
+    }
+    
+    .seo-panel {
+        margin: 0 3px 3px 3px;
+        border-radius: 10px 10px 0 0;
+        max-height: 50vh;
+    }
+}
+
+@media (max-width: 480px) {
+    html {
+        font-size: 13px;
+    }
+    
+    .editor-container {
+        margin: 2px;
+        margin-bottom: 0;
+        border-radius: 8px;
+    }
+    
+    .seo-panel {
+        margin: 0 2px 2px 2px;
+        border-radius: 8px 8px 0 0;
+        max-height: 45vh;
+    }
+}

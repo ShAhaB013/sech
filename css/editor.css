@@ -1,0 +1,191 @@
+/**
+ * استایل‌های مربوط به ادیتور
+ */
+
+.editor-container {
+    flex: 1;
+    padding: 0;
+    overflow: hidden;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+/* رسپانسیو بودن ویرایشگر */
+.editor-container .tox-tinymce {
+    flex: 1;
+    border: none !important;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.editor-container .tox-edit-area {
+    flex: 1;
+    min-height: 400px;
+}
+
+/* تنظیمات رسپانسیو برای ویرایشگر */
+@media (max-width: 1200px) {
+    .editor-container .tox-edit-area {
+        min-height: 300px;
+    }
+}
+
+@media (max-width: 768px) {
+    .editor-container .tox-edit-area {
+        min-height: 250px;
+    }
+    
+    .editor-container .tox-toolbar {
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 480px) {
+    .editor-container .tox-edit-area {
+        min-height: 200px;
+    }
+    
+    .editor-container .tox-toolbar__group {
+        margin: 2px;
+    }
+}
+
+/* تنظیمات اضافی برای TinyMCE */
+.tce {
+    direction: rtl;
+}
+
+/* استایل‌های سفارشی برای محتوای ادیتور */
+.mce-content-body {
+    font-family: 'Vazir', Tahoma, sans-serif;
+    line-height: 1.8;
+    direction: rtl;
+    text-align: right;
+    padding: 20px;
+    background: #fff;
+    min-height: 400px;
+    font-size: 16px;
+    color: #333;
+}
+
+.mce-content-body p {
+    margin-bottom: 1em;
+    transition: all 0.3s ease;
+}
+
+.mce-content-body h1,
+.mce-content-body h2,
+.mce-content-body h3,
+.mce-content-body h4,
+.mce-content-body h5,
+.mce-content-body h6 {
+    font-weight: 600;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+}
+
+.mce-content-body img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 1em 0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.mce-content-body img:hover {
+    transform: scale(1.02);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.mce-content-body table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+}
+
+.mce-content-body table,
+.mce-content-body th,
+.mce-content-body td {
+    border: 1px solid #ccc;
+    padding: 8px;
+}
+
+.mce-content-body th {
+    background: #f0f0f0;
+    font-weight: 600;
+}
+
+/* استایل‌های اضافی برای حفظ فرمت‌های paste شده */
+.mce-content-body * {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.mce-content-body a {
+    color: #667eea;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.mce-content-body a:hover {
+    color: #764ba2;
+    text-decoration: underline;
+}
+
+.mce-content-body blockquote {
+    border-right: 4px solid #667eea;
+    padding-right: 16px;
+    margin: 16px 0;
+    font-style: italic;
+    background: #f8f9fa;
+    border-radius: 0 8px 8px 0;
+}
+
+.mce-content-body code {
+    background: #f1f3f4;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+.mce-content-body pre {
+    background: #f8f9fa;
+    padding: 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    border: 1px solid #e0e0e0;
+}
+
+/* رسپانسیو بودن عناصر */
+@media (max-width: 768px) {
+    .mce-content-body {
+        padding: 16px;
+        font-size: 14px;
+    }
+    
+    .mce-content-body img {
+        margin: 0.5em 0;
+    }
+    
+    .mce-content-body table {
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .mce-content-body {
+        padding: 12px;
+        font-size: 13px;
+    }
+    
+    .mce-content-body h1, .mce-content-body h2, .mce-content-body h3 {
+        font-size: 1.2em;
+    }
+}
