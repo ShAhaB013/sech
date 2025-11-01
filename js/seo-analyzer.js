@@ -1,5 +1,5 @@
 /**
- * ماژول تحلیل SEO
+ * ماژول تحلیل SEO - نسخه بهینه شده
  */
 
 const SEOAnalyzer = {
@@ -8,14 +8,11 @@ const SEOAnalyzer = {
      */
     analyze(content, mainKeyword, secondaryKeywords) {
         const plainText = Utils.extractText(content);
-        
-        // برای محاسبه تراکم، از متن بدون هدینگ استفاده می‌کنیم
         const plainTextWithoutHeadings = Utils.extractTextWithoutHeadings(content);
         
         const totalWords = Utils.countWords(plainText);
         const totalWordsWithoutHeadings = Utils.countWords(plainTextWithoutHeadings);
         
-        // محاسبه تکرار کلمه کلیدی فقط در متن (بدون هدینگ‌ها)
         const keywordCount = Utils.findKeyword(plainTextWithoutHeadings, mainKeyword).length;
         const keywordDensity = Utils.calculatePercentage(keywordCount, totalWordsWithoutHeadings);
 
@@ -24,7 +21,8 @@ const SEOAnalyzer = {
             keywordCount,
             keywordDensity,
             checks: this.performSEOChecks(content, plainText, mainKeyword, secondaryKeywords, totalWords, keywordCount, keywordDensity, totalWordsWithoutHeadings),
-            readabilityChecks: this.performReadabilityChecks(content, plainText)
+            readabilityChecks: this.performReadabilityChecks(content, plainText),
+            suggestionChecks: this.performSuggestionChecks(plainText)
         };
     },
 
@@ -37,16 +35,16 @@ const SEOAnalyzer = {
         // چک عنوان H1
         checks.push(this.checkH1Keyword(content, mainKeyword));
 
-        // چک تصاویر
-        checks.push(this.checkImageAlt(content, mainKeyword));
+        // چک تصاویر (با کلمات فرعی)
+        checks.push(this.checkImageAlt(content, mainKeyword, secondaryKeywords));
 
         // چک پاراگراف اول
         checks.push(this.checkFirstParagraph(content, mainKeyword));
 
-        // چک تراکم کلمه کلیدی (با پارامتر اضافی)
+        // چک تراکم کلمه کلیدی
         checks.push(this.checkKeywordDensity(keywordDensity, keywordCount, totalWordsWithoutHeadings));
 
-        // چک تراکم کلمه کلیدی در هدینگ‌ها (چک جدید)
+        // چک تراکم کلمه کلیدی در هدینگ‌ها
         checks.push(this.checkKeywordDensityInHeadings(content, mainKeyword));
 
         // چک کلمات کلیدی فرعی
@@ -60,6 +58,15 @@ const SEOAnalyzer = {
 
         // چک لینک‌دهی با کلمات کلیدی
         checks.push(this.checkKeywordLinking(content, mainKeyword, secondaryKeywords));
+
+        return checks;
+    },
+
+    /**
+     * انجام چک‌های پیشنهادی (تب پیشنهادات)
+     */
+    performSuggestionChecks(plainText) {
+        const checks = [];
 
         // تشخیص کلمه کلیدی اصلی
         checks.push(this.detectMainKeyword(plainText));
@@ -86,19 +93,149 @@ const SEOAnalyzer = {
     },
 
     /**
-     * چک متن جایگزین تصاویر
+     * چک متن جایگزین تصاویر (پیشرفته با کلمات فرعی)
      */
-    checkImageAlt(content, mainKeyword) {
-        const imgCheck = Utils.hasKeywordInSection(content, mainKeyword, 'img');
+    checkImageAlt(content, mainKeyword, secondaryKeywords = []) {
+        const temp = document.createElement('div');
+        temp.innerHTML = content;
+        const allImages = temp.querySelectorAll('img');
+        
+        if (allImages.length === 0) {
+            return {
+                status: CONFIG.CHECK_STATUS.WARNING,
+                title: 'کلمه کلیدی در زیرنویس تصاویر',
+                tooltip: 'استفاده از کلمات کلیدی (اصلی یا فرعی) در متن جایگزین (alt) تصاویر به بهبود سئو تصاویر و دسترسی‌پذیری کمک می‌کند.',
+                desc: 'هیچ تصویری در محتوا یافت نشد',
+                detail: 'لطفاً تصویر به محتوا اضافه کنید'
+            };
+        }
+        
+        // آمارگیری دقیق
+        let imagesWithMainKeyword = [];
+        let imagesWithSecondaryKeyword = [];
+        let imagesWithoutAlt = [];
+        let imagesWithEmptyAlt = [];
+        
+        allImages.forEach((img, index) => {
+            const altText = img.getAttribute('alt');
+            
+            if (!altText) {
+                imagesWithoutAlt.push(index + 1);
+            } else if (altText.trim() === '') {
+                imagesWithEmptyAlt.push(index + 1);
+            } else {
+                // بررسی کلمه کلیدی اصلی
+                if (Utils.findKeyword(altText, mainKeyword).length > 0) {
+                    imagesWithMainKeyword.push({
+                        index: index + 1,
+                        alt: altText
+                    });
+                } else if (secondaryKeywords.length > 0) {
+                    // بررسی کلمات کلیدی فرعی
+                    const foundSecondary = secondaryKeywords.find(kw => 
+                        Utils.findKeyword(altText, kw).length > 0
+                    );
+                    if (foundSecondary) {
+                        imagesWithSecondaryKeyword.push({
+                            index: index + 1,
+                            alt: altText,
+                            keyword: foundSecondary
+                        });
+                    }
+                }
+            }
+        });
+        
+        const totalImages = allImages.length;
+        const imagesWithKeywords = imagesWithMainKeyword.length + imagesWithSecondaryKeyword.length;
+        const keywordCoverage = (imagesWithKeywords / totalImages) * 100;
+        
+        // تعیین وضعیت
+        let status, desc, detail;
+        
+        if (imagesWithKeywords === 0) {
+            status = CONFIG.CHECK_STATUS.ERROR;
+            desc = `هیچ تصویری (از ${totalImages} تصویر) شامل کلمه کلیدی نیست`;
+            
+            let detailParts = [];
+            if (imagesWithoutAlt.length > 0) {
+                detailParts.push(`⚠️ ${imagesWithoutAlt.length} تصویر بدون alt: شماره ${imagesWithoutAlt.join('، ')}`);
+            }
+            if (imagesWithEmptyAlt.length > 0) {
+                detailParts.push(`⚠️ ${imagesWithEmptyAlt.length} تصویر با alt خالی: شماره ${imagesWithEmptyAlt.join('، ')}`);
+            }
+            detailParts.push('💡 توصیه: از کلمات کلیدی اصلی یا فرعی در alt تصاویر استفاده کنید');
+            detail = detailParts.join('\n');
+            
+        } else if (keywordCoverage >= 70) {
+            status = CONFIG.CHECK_STATUS.SUCCESS;
+            desc = `عالی! ${imagesWithKeywords} از ${totalImages} تصویر شامل کلمه کلیدی است (${Math.round(keywordCoverage)}%) ✓`;
+            
+            let detailParts = [];
+            if (imagesWithMainKeyword.length > 0) {
+                detailParts.push(`✅ ${imagesWithMainKeyword.length} تصویر با کلمه کلیدی اصلی:`);
+                imagesWithMainKeyword.forEach(img => {
+                    const altPreview = img.alt.length > 60 ? img.alt.substring(0, 60) + '...' : img.alt;
+                    detailParts.push(`  • تصویر ${img.index}: "${Utils.displayText(altPreview)}"`);
+                });
+            }
+            if (imagesWithSecondaryKeyword.length > 0) {
+                detailParts.push(`✅ ${imagesWithSecondaryKeyword.length} تصویر با کلمه کلیدی فرعی:`);
+                imagesWithSecondaryKeyword.forEach(img => {
+                    const altPreview = img.alt.length > 50 ? img.alt.substring(0, 50) + '...' : img.alt;
+                    detailParts.push(`  • تصویر ${img.index} (${img.keyword}): "${Utils.displayText(altPreview)}"`);
+                });
+            }
+            detail = detailParts.join('\n');
+            
+        } else if (keywordCoverage >= 40) {
+            status = CONFIG.CHECK_STATUS.WARNING;
+            desc = `${imagesWithKeywords} از ${totalImages} تصویر شامل کلمه کلیدی است (${Math.round(keywordCoverage)}%)`;
+            
+            let detailParts = [];
+            if (imagesWithMainKeyword.length > 0) {
+                detailParts.push(`✅ ${imagesWithMainKeyword.length} تصویر با کلمه اصلی`);
+            }
+            if (imagesWithSecondaryKeyword.length > 0) {
+                detailParts.push(`✅ ${imagesWithSecondaryKeyword.length} تصویر با کلمه فرعی`);
+            }
+            const imagesNeedKeyword = totalImages - imagesWithKeywords;
+            if (imagesNeedKeyword > 0) {
+                detailParts.push(`⚠️ ${imagesNeedKeyword} تصویر دیگر نیاز به کلمه کلیدی دارند`);
+            }
+            if (imagesWithoutAlt.length > 0) {
+                detailParts.push(`⚠️ ${imagesWithoutAlt.length} تصویر بدون alt`);
+            }
+            detailParts.push('💡 توصیه: حداقل 70% تصاویر باید شامل کلمه کلیدی باشند');
+            detail = detailParts.join('\n');
+            
+        } else {
+            status = CONFIG.CHECK_STATUS.WARNING;
+            desc = `فقط ${imagesWithKeywords} از ${totalImages} تصویر شامل کلمه کلیدی است (${Math.round(keywordCoverage)}%)`;
+            
+            let detailParts = [];
+            if (imagesWithMainKeyword.length > 0) {
+                detailParts.push(`✅ ${imagesWithMainKeyword.length} تصویر با کلمه اصلی`);
+            }
+            if (imagesWithSecondaryKeyword.length > 0) {
+                detailParts.push(`✅ ${imagesWithSecondaryKeyword.length} تصویر با کلمه فرعی`);
+            }
+            if (imagesWithoutAlt.length > 0) {
+                detailParts.push(`⚠️ ${imagesWithoutAlt.length} تصویر بدون alt: شماره ${imagesWithoutAlt.join('، ')}`);
+            }
+            if (imagesWithEmptyAlt.length > 0) {
+                detailParts.push(`⚠️ ${imagesWithEmptyAlt.length} تصویر با alt خالی: شماره ${imagesWithEmptyAlt.join('، ')}`);
+            }
+            detailParts.push('💡 توصیه: حداقل 70% تصاویر باید شامل کلمه کلیدی باشند');
+            detail = detailParts.join('\n');
+        }
         
         return {
-            status: imgCheck.found ? CONFIG.CHECK_STATUS.SUCCESS : CONFIG.CHECK_STATUS.WARNING,
+            status,
             title: 'کلمه کلیدی در زیرنویس تصاویر',
-            tooltip: 'استفاده از کلمه کلیدی در متن جایگزین (alt) تصاویر به بهبود سئو تصاویر و دسترسی‌پذیری کمک می‌کند.',
-            desc: imgCheck.found 
-                ? 'حداقل یک تصویر دارای alt با کلمه کلیدی است ✓' 
-                : 'توصیه می‌شود از کلمه کلیدی در متن جایگزین (alt) تصاویر استفاده کنید',
-            detail: imgCheck.found ? `Alt: "${imgCheck.text}"` : null
+            tooltip: 'استفاده از کلمات کلیدی (اصلی یا فرعی) در متن جایگزین (alt) تصاویر به بهبود سئو تصاویر و دسترسی‌پذیری کمک می‌کند. حداقل 70% تصاویر باید دارای alt با کلمه کلیدی باشند.',
+            desc,
+            detail
         };
     },
 
@@ -157,7 +294,6 @@ const SEOAnalyzer = {
         const keywordCountInHeadings = Utils.findKeyword(headingsText, mainKeyword).length;
         const headingDensity = Utils.calculatePercentage(keywordCountInHeadings, totalWordsInHeadings);
         
-        // برای هدینگ‌ها، تراکم بالاتر قابل قبول است (بین 3% تا 10%)
         const MIN_HEADING_DENSITY = 3;
         const MAX_HEADING_DENSITY = 10;
         
@@ -192,7 +328,7 @@ const SEOAnalyzer = {
     },
 
     /**
-     * شمارش تعداد هدینگ‌ها
+     * شمارش تعداد هدینگ‌ها (بهینه شده)
      */
     countHeadings(content) {
         const temp = document.createElement('div');
@@ -233,23 +369,28 @@ const SEOAnalyzer = {
     },
 
     /**
-     * چک رنگ آبی برای کلمه کلیدی
+     * چک رنگ آبی برای کلمه کلیدی (بهینه شده)
      */
     checkBlueKeyword(content, mainKeyword) {
         const temp = document.createElement('div');
         temp.innerHTML = content;
-        const blueElements = temp.querySelectorAll(
-            '[style*="color"][style*="blue"], ' +
-            '[style*="color: rgb(0, 0, 255)"], ' +
-            '[style*="color:#00f"], ' +
-            '[style*="color: #0000ff"]'
-        );
+        
+        // بهینه‌سازی: استفاده از selector ساده‌تر
+        const blueElements = temp.querySelectorAll('[style*="color"]');
         
         let hasBlueKeyword = false;
         for (let element of blueElements) {
-            if (Utils.findKeyword(element.textContent, mainKeyword).length > 0) {
-                hasBlueKeyword = true;
-                break;
+            const style = element.style.color;
+            if (style && (
+                style.includes('blue') || 
+                style.includes('rgb(0, 0, 255)') || 
+                style.includes('#00f') || 
+                style.includes('#0000ff')
+            )) {
+                if (Utils.findKeyword(element.textContent, mainKeyword).length > 0) {
+                    hasBlueKeyword = true;
+                    break;
+                }
             }
         }
         
@@ -264,7 +405,7 @@ const SEOAnalyzer = {
     },
 
     /**
-     * چک نسبت تصویر به متن
+     * چک نسبت تصویر به متن (بهینه شده)
      */
     checkImageRatio(content, totalWords) {
         const temp = document.createElement('div');
@@ -299,7 +440,7 @@ const SEOAnalyzer = {
     },
 
     /**
-     * چک لینک‌دهی با کلمات کلیدی
+     * چک لینک‌دهی با کلمات کلیدی (بهینه شده)
      */
     checkKeywordLinking(content, mainKeyword, secondaryKeywords) {
         const temp = document.createElement('div');
@@ -316,22 +457,20 @@ const SEOAnalyzer = {
             };
         }
 
-        // بررسی لینک‌های حاوی کلمه کلیدی اصلی
-        const mainKeywordLinks = Array.from(allLinks).filter(link => {
+        const mainKeywordLower = mainKeyword.toLowerCase();
+        const secondaryKeywordsLower = secondaryKeywords.map(k => k.toLowerCase());
+        
+        let totalKeywordLinks = 0;
+        
+        for (let link of allLinks) {
             const linkText = link.textContent.toLowerCase().trim();
-            const mainKeywordLower = mainKeyword.toLowerCase();
-            return linkText.includes(mainKeywordLower);
-        });
+            
+            if (linkText.includes(mainKeywordLower) || 
+                secondaryKeywordsLower.some(kw => linkText.includes(kw))) {
+                totalKeywordLinks++;
+            }
+        }
 
-        // بررسی لینک‌های حاوی کلمات کلیدی فرعی
-        const secondaryKeywordLinks = Array.from(allLinks).filter(link => {
-            const linkText = link.textContent.toLowerCase().trim();
-            return secondaryKeywords.some(keyword => 
-                linkText.includes(keyword.toLowerCase())
-            );
-        });
-
-        const totalKeywordLinks = new Set([...mainKeywordLinks, ...secondaryKeywordLinks]).size;
         const keywordLinkPercentage = (totalKeywordLinks / allLinks.length) * 100;
 
         let status, desc, detail;
@@ -343,13 +482,11 @@ const SEOAnalyzer = {
         } else if (keywordLinkPercentage >= 25) {
             status = CONFIG.CHECK_STATUS.WARNING;
             desc = `${totalKeywordLinks} از ${allLinks.length} لینک با کلمات کلیدی مرتبط است`;
-            const percentage = Math.round(keywordLinkPercentage);
-            detail = `توصیه: لینک‌های بیشتری با کلمات کلیدی مرتبط کنید (درصد فعلی: ${percentage}%)`;
+            detail = `توصیه: لینک‌های بیشتری با کلمات کلیدی مرتبط کنید (درصد فعلی: ${Math.round(keywordLinkPercentage)}%)`;
         } else {
             status = CONFIG.CHECK_STATUS.WARNING;
             desc = `${totalKeywordLinks} از ${allLinks.length} لینک با کلمات کلیدی مرتبط است`;
-            const percentage = Math.round(keywordLinkPercentage);
-            detail = `توصیه: لینک‌های بیشتری با کلمات کلیدی اصلی یا فرعی اضافه کنید (درصد فعلی: ${percentage}%)`;
+            detail = `توصیه: لینک‌های بیشتری با کلمات کلیدی اصلی یا فرعی اضافه کنید (درصد فعلی: ${Math.round(keywordLinkPercentage)}%)`;
         }
 
         return {
@@ -367,17 +504,14 @@ const SEOAnalyzer = {
     performReadabilityChecks(content, plainText) {
         const checks = [];
         
-        // چک جملات طولانی
         checks.push(this.checkSentenceLength(plainText));
-        
-        // چک پاراگراف‌های طولانی
         checks.push(this.checkParagraphLength(content));
         
         return checks;
     },
 
     /**
-     * چک طول جملات (بهبود یافته برای فارسی)
+     * چک طول جملات (بهبود یافته)
      */
     checkSentenceLength(plainText) {
         const sentences = Utils.splitIntoSentences(plainText);
@@ -392,15 +526,13 @@ const SEOAnalyzer = {
             };
         }
         
-        // دسته‌بندی جملات
-        const shortSentences = [];      // تا 12 کلمه
-        const mediumSentences = [];     // 13-18 کلمه
-        const longSentences = [];       // 19-25 کلمه
-        const veryLongSentences = [];   // بیش از 25 کلمه
+        const shortSentences = [];
+        const mediumSentences = [];
+        const longSentences = [];
+        const veryLongSentences = [];
         
         sentences.forEach(sentence => {
             const wordCount = Utils.countWords(sentence);
-            const category = Utils.categorizeSentence(sentence);
             
             if (wordCount <= 12) {
                 shortSentences.push(sentence);
@@ -413,12 +545,10 @@ const SEOAnalyzer = {
             }
         });
         
-        // محاسبه درصدها
         const totalSentences = sentences.length;
         const longPercentage = ((longSentences.length + veryLongSentences.length) / totalSentences) * 100;
         const veryLongPercentage = (veryLongSentences.length / totalSentences) * 100;
         
-        // تعیین وضعیت
         let status, desc, detail;
         
         if (veryLongSentences.length === 0 && longSentences.length <= 2) {
@@ -443,7 +573,6 @@ const SEOAnalyzer = {
             detail = `این جملات قابل قبول هستند اما کوتاه‌تر کردن آنها خوانایی را بهبود می‌بخشد.`;
         }
         
-        // اضافه کردن آمار تفصیلی
         const stats = `\n\n📊 آمار جملات:\n` +
             `🟢 کوتاه (تا 12 کلمه): ${shortSentences.length} جمله (${((shortSentences.length / totalSentences) * 100).toFixed(0)}%)\n` +
             `🟡 متوسط (13-18 کلمه): ${mediumSentences.length} جمله (${((mediumSentences.length / totalSentences) * 100).toFixed(0)}%)\n` +
@@ -457,12 +586,12 @@ const SEOAnalyzer = {
             tooltip: `در متن فارسی، جملات کوتاه (تا 12 کلمه) و متوسط (13-18 کلمه) خوانایی بهتری دارند. جملات بلندتر از 20 کلمه خواندن را سخت می‌کنند و برای سئو مضر هستند. معیار یانک: حداقل 70% جملات باید کمتر از 20 کلمه باشند.`,
             desc,
             detail: detail + stats,
-            longSentences: [...longSentences, ...veryLongSentences] // برای هایلایت
+            longSentences: [...longSentences, ...veryLongSentences]
         };
     },
 
     /**
-     * چک طول پاراگراف‌ها (بهبود یافته برای فارسی)
+     * چک طول پاراگراف‌ها (بهبود یافته)
      */
     checkParagraphLength(content) {
         const paragraphs = Utils.extractParagraphs(content);
@@ -477,11 +606,10 @@ const SEOAnalyzer = {
             };
         }
         
-        // دسته‌بندی پاراگراف‌ها
-        const shortParagraphs = [];      // تا 50 کلمه
-        const mediumParagraphs = [];     // 51-100 کلمه
-        const longParagraphs = [];       // 101-150 کلمه
-        const veryLongParagraphs = [];   // بیش از 150 کلمه
+        const shortParagraphs = [];
+        const mediumParagraphs = [];
+        const longParagraphs = [];
+        const veryLongParagraphs = [];
         
         paragraphs.forEach(paragraph => {
             const wordCount = Utils.countWords(paragraph);
@@ -497,12 +625,10 @@ const SEOAnalyzer = {
             }
         });
         
-        // محاسبه درصدها
         const totalParagraphs = paragraphs.length;
         const longPercentage = ((longParagraphs.length + veryLongParagraphs.length) / totalParagraphs) * 100;
         const veryLongPercentage = (veryLongParagraphs.length / totalParagraphs) * 100;
         
-        // تعیین وضعیت
         let status, desc, detail;
         
         if (veryLongParagraphs.length === 0 && longParagraphs.length <= 1) {
@@ -527,7 +653,6 @@ const SEOAnalyzer = {
             detail = `این پاراگراف‌ها قابل قبول هستند اما کوچک‌تر کردن آنها خوانایی را بهبود می‌بخشد.`;
         }
         
-        // پیدا کردن طولانی‌ترین پاراگراف
         const longestParagraph = [...veryLongParagraphs, ...longParagraphs]
             .sort((a, b) => b.wordCount - a.wordCount)[0];
         
@@ -535,7 +660,6 @@ const SEOAnalyzer = {
             ? `\n\n🔴 طولانی‌ترین پاراگراف: ${longestParagraph.wordCount} کلمه`
             : '';
         
-        // اضافه کردن آمار تفصیلی
         const stats = `\n\n📊 آمار پاراگراف‌ها:\n` +
             `🟢 کوتاه (تا 50 کلمه): ${shortParagraphs.length} پاراگراف (${((shortParagraphs.length / totalParagraphs) * 100).toFixed(0)}%)\n` +
             `🟡 متوسط (51-100 کلمه): ${mediumParagraphs.length} پاراگراف (${((mediumParagraphs.length / totalParagraphs) * 100).toFixed(0)}%)\n` +
@@ -550,7 +674,7 @@ const SEOAnalyzer = {
             tooltip: `در متن فارسی، پاراگراف‌های کوتاه (تا 50 کلمه) و متوسط (51-100 کلمه) خوانایی بهتری دارند. پاراگراف‌های بلندتر از 120 کلمه خواننده را خسته می‌کنند. معیار یانک: حداقل 70% پاراگراف‌ها باید کمتر از 100 کلمه باشند.`,
             desc,
             detail: detail + stats,
-            longParagraphs: [...longParagraphs, ...veryLongParagraphs] // برای هایلایت
+            longParagraphs: [...longParagraphs, ...veryLongParagraphs]
         };
     },
 
@@ -639,7 +763,6 @@ const SEOAnalyzer = {
     }
 };
 
-// Export برای استفاده در سایر ماژول‌ها
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = SEOAnalyzer;
 }
