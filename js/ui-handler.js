@@ -1,43 +1,16 @@
 /**
- * مدیریت رابط کاربری
+ * مدیریت رابط کاربری - نسخه بهینه شده
  */
 
 const UIHandler = {
-    // وضعیت‌های هایلایت
     highlightStates: {
         sentences: false,
         paragraphs: false
     },
 
-    // آرایه کلمات کلیدی فرعی
     secondaryKeywordsArray: [],
+    elements: {},
 
-    // المان‌های DOM
-    elements: {
-        scoreCircle: null,
-        scoreLabel: null,
-        scoreDesc: null,
-        wordCount: null,
-        keywordCount: null,
-        checksList: null,
-        readabilityChecks: null,
-        suggestionsContent: null,
-        infoModal: null,
-        infoTitle: null,
-        infoBody: null,
-        closeModalBtn: null,
-        mainKeyword: null,
-        secondaryKeywords: null,
-        keywordsTags: null,
-        seoBadge: null,
-        readabilityBadge: null,
-        tabs: null,
-        tabContents: null
-    },
-
-    /**
-     * مقداردهی اولیه
-     */
     init() {
         this.cacheElements();
         this.attachEventListeners();
@@ -72,7 +45,7 @@ const UIHandler = {
     },
 
     /**
-     * اتصال Event Listeners
+     * اتصال Event Listeners با Event Delegation
      */
     attachEventListeners() {
         // بستن مودال
@@ -108,7 +81,6 @@ const UIHandler = {
                 e.preventDefault();
                 this.addKeywordTag();
             } else if (e.key === 'Backspace' && e.target.value === '') {
-                // حذف آخرین تگ با Backspace
                 this.removeLastKeywordTag();
             }
         });
@@ -226,11 +198,11 @@ const UIHandler = {
     },
 
     /**
-     * رندر کردن تگ‌های کلمات کلیدی
+     * رندر کردن تگ‌های کلمات کلیدی با DocumentFragment (بهینه)
      */
     renderKeywordTags() {
         const container = this.elements.keywordsTags;
-        container.innerHTML = '';
+        const fragment = document.createDocumentFragment();
 
         this.secondaryKeywordsArray.forEach(keyword => {
             const tag = document.createElement('div');
@@ -239,7 +211,7 @@ const UIHandler = {
             const text = document.createElement('span');
             text.className = 'keyword-tag-text';
             text.textContent = keyword;
-            text.title = keyword; // برای نمایش کامل در hover
+            text.title = keyword;
             
             const removeBtn = document.createElement('span');
             removeBtn.className = 'keyword-tag-remove';
@@ -250,8 +222,11 @@ const UIHandler = {
             
             tag.appendChild(text);
             tag.appendChild(removeBtn);
-            container.appendChild(tag);
+            fragment.appendChild(tag);
         });
+
+        container.innerHTML = '';
+        container.appendChild(fragment);
     },
 
     /**
@@ -264,6 +239,11 @@ const UIHandler = {
         this.elements.scoreDesc.textContent = CONFIG.MESSAGES.NO_KEYWORD.desc;
         this.elements.checksList.innerHTML = '';
         this.elements.readabilityChecks.innerHTML = '';
+        
+        // پاک کردن تب پیشنهادات
+        if (this.elements.suggestionsContent) {
+            this.elements.suggestionsContent.innerHTML = '';
+        }
     },
 
     /**
@@ -297,13 +277,8 @@ const UIHandler = {
         
         this.elements.checksList.innerHTML = this.createCheckHTML(suggestionCheck);
         
-        // اتصال event listeners
-        this.elements.checksList.querySelectorAll('.keyword-suggestion-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                const keyword = e.currentTarget.getAttribute('data-keyword');
-                this.handleKeywordSuggestionClick(keyword);
-            });
-        });
+        // Event delegation فقط یک بار - از طریق attachCheckEventListeners
+        this.attachCheckEventListeners(this.elements.checksList, false);
         
         // پاک کردن بخش خوانایی
         this.elements.readabilityChecks.innerHTML = '';
@@ -326,6 +301,11 @@ const UIHandler = {
 
         // نمایش چک‌های خوانایی
         this.renderChecks(results.readabilityChecks, this.elements.readabilityChecks);
+
+        // نمایش پیشنهادات (اگر موجود باشد)
+        if (results.suggestionChecks && results.suggestionChecks.length > 0) {
+            this.renderSuggestions(results.suggestionChecks);
+        }
     },
 
     /**
@@ -353,40 +333,82 @@ const UIHandler = {
     },
 
     /**
-     * رندر کردن چک‌ها
+     * رندر کردن چک‌ها با Event Delegation (بهینه)
      */
     renderChecks(checks, container) {
         const isReadabilitySection = container.id === 'readabilityChecks';
         
+        // استفاده از DocumentFragment برای عملکرد بهتر
+        const fragment = document.createDocumentFragment();
+        const tempDiv = document.createElement('div');
+        
         if (isReadabilitySection) {
-            container.innerHTML = checks.map(check => this.createReadabilityCheckHTML(check)).join('');
-            
-            // اتصال event listeners به آیکون‌های چشم
-            container.querySelectorAll('.readability-check-eye').forEach(icon => {
-                icon.addEventListener('click', (e) => {
-                    const type = e.target.getAttribute('data-type');
-                    this.toggleReadabilityHighlight(type);
-                });
-            });
+            tempDiv.innerHTML = checks.map(check => this.createReadabilityCheckHTML(check)).join('');
         } else {
-            container.innerHTML = checks.map(check => this.createCheckHTML(check)).join('');
+            tempDiv.innerHTML = checks.map(check => this.createCheckHTML(check)).join('');
         }
         
-        // اتصال event listeners به آیکون‌های اطلاعات
-        container.querySelectorAll('.check-info').forEach(icon => {
-            icon.addEventListener('click', (e) => {
-                const title = e.target.getAttribute('data-title');
-                const tooltip = e.target.getAttribute('data-tooltip');
-                this.showInfoModal(title, tooltip);
-            });
-        });
+        while (tempDiv.firstChild) {
+            fragment.appendChild(tempDiv.firstChild);
+        }
         
-        // اتصال event listeners به پیشنهادات کلمات کلیدی
-        container.querySelectorAll('.keyword-suggestion-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                const keyword = e.currentTarget.getAttribute('data-keyword');
+        container.innerHTML = '';
+        container.appendChild(fragment);
+        
+        // Event delegation برای جلوگیری از multiple event listeners
+        this.attachCheckEventListeners(container, isReadabilitySection);
+    },
+
+    /**
+     * Event delegation برای چک‌ها (بهینه) - با چک امنیت
+     */
+    attachCheckEventListeners(container, isReadabilitySection) {
+        // چک وجود container
+        if (!container || !container.parentNode) {
+            console.warn('⚠️ Container موجود نیست');
+            return;
+        }
+
+        // پاک کردن event listeners قبلی با clone
+        const newContainer = container.cloneNode(true);
+        container.parentNode.replaceChild(newContainer, container);
+        
+        // به‌روزرسانی reference در elements
+        if (container.id === 'checksList') {
+            this.elements.checksList = newContainer;
+        } else if (container.id === 'readabilityChecks') {
+            this.elements.readabilityChecks = newContainer;
+        } else if (container.id === 'suggestionsContent') {
+            this.elements.suggestionsContent = newContainer;
+        }
+        
+        // اضافه کردن event listener جدید
+        newContainer.addEventListener('click', (e) => {
+            // کلیک روی آیکون اطلاعات
+            const infoIcon = e.target.closest('.check-info');
+            if (infoIcon) {
+                const title = infoIcon.getAttribute('data-title');
+                const tooltip = infoIcon.getAttribute('data-tooltip');
+                this.showInfoModal(title, tooltip);
+                return;
+            }
+            
+            // کلیک روی آیکون چشم (خوانایی)
+            if (isReadabilitySection) {
+                const eyeIcon = e.target.closest('.readability-check-eye');
+                if (eyeIcon) {
+                    const type = eyeIcon.getAttribute('data-type');
+                    this.toggleReadabilityHighlight(type);
+                    return;
+                }
+            }
+            
+            // کلیک روی پیشنهاد کلمه کلیدی
+            const suggestionItem = e.target.closest('.keyword-suggestion-item');
+            if (suggestionItem) {
+                const keyword = suggestionItem.getAttribute('data-keyword');
                 this.handleKeywordSuggestionClick(keyword);
-            });
+            }
         });
     },
 
@@ -400,7 +422,6 @@ const UIHandler = {
         
         let suggestionsHTML = '';
         if (check.suggestions && check.suggestions.length > 0) {
-            // تعیین کلاس CSS بر اساس نوع چک
             const suggestionsClass = check.title.includes('اصلی') ? 'main-keyword-suggestions' : 
                                    check.title.includes('فرعی') ? 'secondary-keyword-suggestions' : 
                                    'keyword-suggestions';
@@ -444,7 +465,6 @@ const UIHandler = {
         const escapedTitle = Utils.escapeHtml(check.title);
         const escapedTooltip = Utils.escapeHtml(check.tooltip);
         
-        // تعیین نوع آیکون چشم بر اساس عنوان
         let eyeType = '';
         if (check.title.includes('جملات')) {
             eyeType = 'sentences';
@@ -483,26 +503,29 @@ const UIHandler = {
     },
 
     /**
-     * اعمال هایلایت‌ها به محتوا
+     * اعمال هایلایت‌ها به محتوا با requestAnimationFrame (بهینه)
      */
     applyHighlights() {
         const editor = window.editorInstance;
         if (!editor) return;
 
-        const body = editor.getBody();
-        
-        // پاک کردن تمام هایلایت‌های قبلی
-        this.clearHighlights(body);
-        
-        // اعمال هایلایت پاراگراف‌ها
-        if (this.highlightStates.paragraphs) {
-            this.highlightLongParagraphs(body);
-        }
-        
-        // اعمال هایلایت جملات
-        if (this.highlightStates.sentences) {
-            this.highlightLongSentences(body);
-        }
+        // استفاده از requestAnimationFrame برای رندر صاف‌تر
+        requestAnimationFrame(() => {
+            const body = editor.getBody();
+            
+            // پاک کردن تمام هایلایت‌های قبلی
+            this.clearHighlights(body);
+            
+            // اعمال هایلایت پاراگراف‌ها
+            if (this.highlightStates.paragraphs) {
+                this.highlightLongParagraphs(body);
+            }
+            
+            // اعمال هایلایت جملات
+            if (this.highlightStates.sentences) {
+                this.highlightLongSentences(body);
+            }
+        });
     },
 
     /**
@@ -524,83 +547,39 @@ const UIHandler = {
     },
 
     /**
-     * هایلایت پاراگراف‌های طولانی (بهبود یافته)
+     * هایلایت پاراگراف‌های طولانی (بهینه شده با batch processing)
      */
     highlightLongParagraphs(body) {
-        body.querySelectorAll('p').forEach(p => {
+        const paragraphs = body.querySelectorAll('p');
+        const batch = [];
+        
+        paragraphs.forEach(p => {
             const text = (p.textContent || '').trim();
             if (!text) return;
             
             const wordCount = Utils.countWords(text);
             
-            // دسته‌بندی پاراگراف
             if (wordCount > 150) {
-                // خیلی بلند - قرمز
-                p.style.background = 'rgba(239, 68, 68, 0.15)';
-                p.style.borderRight = '4px solid #ef4444';
-                p.style.borderBottom = '2px solid #ef4444';
-                p.style.padding = '12px';
-                p.style.borderRadius = '6px';
-                p.style.position = 'relative';
-                
-                // اضافه کردن برچسب هشدار
-                const badge = document.createElement('span');
-                badge.textContent = `⚠️ پاراگراف ${wordCount} کلمه‌ای`;
-                badge.style.cssText = `
-                    position: absolute;
-                    top: 4px;
-                    left: 8px;
-                    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-                    color: white;
-                    padding: 4px 10px;
-                    border-radius: 6px;
-                    font-size: 11px;
-                    font-weight: 600;
-                    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
-                    z-index: 10;
-                `;
-                p.style.position = 'relative';
-                if (!p.querySelector('span[style*="position: absolute"]')) {
-                    p.appendChild(badge);
-                }
+                batch.push({ element: p, wordCount, level: 'critical' });
             } else if (wordCount > 100) {
-                // بلند - نارنجی
-                p.style.background = 'rgba(245, 158, 11, 0.12)';
-                p.style.borderRight = '4px solid #f59e0b';
-                p.style.borderBottom = '2px solid #f59e0b';
-                p.style.padding = '12px';
-                p.style.borderRadius = '6px';
-                p.style.position = 'relative';
-                
-                // اضافه کردن برچسب اطلاع
-                const badge = document.createElement('span');
-                badge.textContent = `⚡ پاراگراف ${wordCount} کلمه‌ای`;
-                badge.style.cssText = `
-                    position: absolute;
-                    top: 4px;
-                    left: 8px;
-                    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-                    color: white;
-                    padding: 4px 10px;
-                    border-radius: 6px;
-                    font-size: 11px;
-                    font-weight: 600;
-                    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
-                    z-index: 10;
-                `;
-                p.style.position = 'relative';
-                if (!p.querySelector('span[style*="position: absolute"]')) {
-                    p.appendChild(badge);
-                }
+                batch.push({ element: p, wordCount, level: 'warning' });
             }
+        });
+        
+        // اعمال استایل‌ها به صورت batch
+        batch.forEach(({ element, wordCount, level }) => {
+            this.applyHighlightStyle(element, wordCount, level, 'paragraph');
         });
     },
 
     /**
-     * هایلایت جملات طولانی (بهبود یافته)
+     * هایلایت جملات طولانی (بهینه شده با batch processing)
      */
     highlightLongSentences(body) {
-        body.querySelectorAll('p').forEach(p => {
+        const paragraphs = body.querySelectorAll('p');
+        const batch = [];
+        
+        paragraphs.forEach(p => {
             const text = (p.textContent || '').trim();
             if (!text) return;
             
@@ -621,65 +600,64 @@ const UIHandler = {
                 }
             }
             
-            // رنگ‌آمیزی بر اساس بدترین حالت
             if (hasVeryLongSentence) {
-                p.style.background = 'rgba(239, 68, 68, 0.15)';
-                p.style.borderRight = '4px solid #ef4444';
-                p.style.borderBottom = '2px solid #ef4444';
-                p.style.padding = '12px';
-                p.style.borderRadius = '6px';
-                p.style.position = 'relative';
-                
-                // اضافه کردن برچسب هشدار
-                const badge = document.createElement('span');
-                badge.textContent = `⚠️ جمله ${maxWordCount} کلمه‌ای`;
-                badge.style.cssText = `
-                    position: absolute;
-                    top: 4px;
-                    left: 8px;
-                    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-                    color: white;
-                    padding: 4px 10px;
-                    border-radius: 6px;
-                    font-size: 11px;
-                    font-weight: 600;
-                    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
-                    z-index: 10;
-                `;
-                p.style.position = 'relative';
-                if (!p.querySelector('span[style*="position: absolute"]')) {
-                    p.appendChild(badge);
-                }
+                batch.push({ element: p, wordCount: maxWordCount, level: 'critical' });
             } else if (hasLongSentence) {
-                p.style.background = 'rgba(245, 158, 11, 0.12)';
-                p.style.borderRight = '4px solid #f59e0b';
-                p.style.borderBottom = '2px solid #f59e0b';
-                p.style.padding = '12px';
-                p.style.borderRadius = '6px';
-                p.style.position = 'relative';
-                
-                // اضافه کردن برچسب هشدار
-                const badge = document.createElement('span');
-                badge.textContent = `⚡ جمله ${maxWordCount} کلمه‌ای`;
-                badge.style.cssText = `
-                    position: absolute;
-                    top: 4px;
-                    left: 8px;
-                    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-                    color: white;
-                    padding: 4px 10px;
-                    border-radius: 6px;
-                    font-size: 11px;
-                    font-weight: 600;
-                    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
-                    z-index: 10;
-                `;
-                p.style.position = 'relative';
-                if (!p.querySelector('span[style*="position: absolute"]')) {
-                    p.appendChild(badge);
-                }
+                batch.push({ element: p, wordCount: maxWordCount, level: 'warning' });
             }
         });
+        
+        // اعمال استایل‌ها به صورت batch
+        batch.forEach(({ element, wordCount, level }) => {
+            this.applyHighlightStyle(element, wordCount, level, 'sentence');
+        });
+    },
+
+    /**
+     * اعمال استایل هایلایت (یکپارچه شده)
+     */
+    applyHighlightStyle(element, wordCount, level, type) {
+        const styles = {
+            critical: {
+                bg: 'rgba(239, 68, 68, 0.15)',
+                border: '#ef4444',
+                gradient: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                icon: '⚠️'
+            },
+            warning: {
+                bg: 'rgba(245, 158, 11, 0.12)',
+                border: '#f59e0b',
+                gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                icon: '⚡'
+            }
+        };
+        
+        const style = styles[level];
+        if (!style) return;
+        
+        element.style.background = style.bg;
+        element.style.borderRight = `4px solid ${style.border}`;
+        element.style.borderBottom = `2px solid ${style.border}`;
+        element.style.padding = '12px';
+        element.style.borderRadius = '6px';
+        element.style.position = 'relative';
+        
+        const badge = document.createElement('span');
+        badge.textContent = `${style.icon} ${type === 'paragraph' ? 'پاراگراف' : 'جمله'} ${wordCount} کلمه‌ای`;
+        badge.style.cssText = `
+            position: absolute;
+            top: 4px;
+            left: 8px;
+            background: ${style.gradient};
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            box-shadow: 0 2px 6px rgba(${level === 'critical' ? '239, 68, 68' : '245, 158, 11'}, 0.4);
+            z-index: 10;
+        `;
+        element.appendChild(badge);
     },
 
     /**
@@ -703,45 +681,70 @@ const UIHandler = {
     },
 
     /**
-     * مدیریت کلیک روی پیشنهاد کلمه کلیدی
+     * مدیریت کلیک روی پیشنهاد کلمه کلیدی (بهبود یافته و دقیق)
      */
     handleKeywordSuggestionClick(keyword) {
-        // بررسی اینکه آیا کلمه کلیدی اصلی خالی است یا نه
-        const currentMainKeyword = this.elements.mainKeyword.value.trim();
+        // تشخیص نوع پیشنهاد از روی DOM
+        const clickedElement = event.target.closest('.keyword-suggestion-item');
+        if (!clickedElement) return;
         
-        if (!currentMainKeyword) {
-            // اگر کلمه کلیدی اصلی خالی است، آن را تنظیم کن
+        const parentSuggestions = clickedElement.closest('.keyword-suggestions');
+        const isMainKeywordSuggestion = parentSuggestions && parentSuggestions.classList.contains('main-keyword-suggestions');
+        const isSecondaryKeywordSuggestion = parentSuggestions && parentSuggestions.classList.contains('secondary-keyword-suggestions');
+        
+        // منطق اضافه کردن
+        if (isMainKeywordSuggestion) {
+            // پیشنهادات اصلی همیشه به باکس اصلی می‌روند
             this.elements.mainKeyword.value = keyword;
             this.elements.mainKeyword.focus();
-            
-            // نمایش پیام موفقیت
             this.showTemporaryMessage('کلمه کلیدی اصلی تنظیم شد: ' + keyword, 'success');
-        } else {
-            // اگر کلمه کلیدی اصلی پر است، به کلمات فرعی اضافه کن
+            
+        } else if (isSecondaryKeywordSuggestion) {
+            // پیشنهادات فرعی همیشه به باکس فرعی می‌روند
             if (!this.secondaryKeywordsArray.includes(keyword)) {
                 this.secondaryKeywordsArray.push(keyword);
                 this.renderKeywordTags();
                 this.elements.secondaryKeywords.focus();
-                
-                // نمایش پیام موفقیت
                 this.showTemporaryMessage('کلمه کلیدی فرعی اضافه شد: ' + keyword, 'success');
             } else {
-                // نمایش پیام هشدار
                 this.showTemporaryMessage('این کلمه قبلاً اضافه شده است', 'warning');
+            }
+            
+        } else {
+            // پیشنهادات عمومی (بدون کلاس خاص)
+            const currentMainKeyword = this.elements.mainKeyword.value.trim();
+            
+            if (!currentMainKeyword) {
+                this.elements.mainKeyword.value = keyword;
+                this.elements.mainKeyword.focus();
+                this.showTemporaryMessage('کلمه کلیدی اصلی تنظیم شد: ' + keyword, 'success');
+            } else {
+                if (!this.secondaryKeywordsArray.includes(keyword)) {
+                    this.secondaryKeywordsArray.push(keyword);
+                    this.renderKeywordTags();
+                    this.elements.secondaryKeywords.focus();
+                    this.showTemporaryMessage('کلمه کلیدی فرعی اضافه شد: ' + keyword, 'success');
+                } else {
+                    this.showTemporaryMessage('این کلمه قبلاً اضافه شده است', 'warning');
+                }
             }
         }
         
-        // اجرای تحلیل مجدد
         if (window.MainApp && window.MainApp.analyzeContent) {
             window.MainApp.analyzeContent();
         }
     },
 
     /**
-     * نمایش پیام موقت
+     * نمایش پیام موقت (بهینه شده)
      */
     showTemporaryMessage(message, type = 'info') {
-        // ایجاد عنصر پیام
+        const colors = {
+            success: '#10b981',
+            warning: '#f59e0b',
+            info: '#667eea'
+        };
+
         const messageEl = document.createElement('div');
         messageEl.className = `temporary-message ${type}`;
         messageEl.textContent = message;
@@ -749,7 +752,7 @@ const UIHandler = {
             position: fixed;
             top: 20px;
             right: 20px;
-            background: ${type === 'success' ? '#10b981' : type === 'warning' ? '#f59e0b' : '#667eea'};
+            background: ${colors[type] || colors.info};
             color: white;
             padding: 12px 20px;
             border-radius: 8px;
@@ -761,34 +764,41 @@ const UIHandler = {
             animation: slideIn 0.3s ease;
         `;
         
-        // اضافه کردن انیمیشن
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes slideIn {
-                from { transform: translateX(100%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
-            @keyframes slideOut {
-                from { transform: translateX(0); opacity: 1; }
-                to { transform: translateX(100%); opacity: 0; }
-            }
-        `;
-        document.head.appendChild(style);
-        
         document.body.appendChild(messageEl);
         
-        // حذف پیام بعد از 3 ثانیه
         setTimeout(() => {
             messageEl.style.animation = 'slideOut 0.3s ease';
             setTimeout(() => {
                 if (messageEl.parentNode) {
                     messageEl.parentNode.removeChild(messageEl);
                 }
-                if (style.parentNode) {
-                    style.parentNode.removeChild(style);
-                }
             }, 300);
         }, 3000);
+    },
+
+    /**
+     * رندر کردن پیشنهادات در تب پیشنهادات
+     */
+    renderSuggestions(suggestionChecks) {
+        const container = this.elements.suggestionsContent;
+        
+        if (!container) return;
+        
+        // استفاده از DocumentFragment برای عملکرد بهتر
+        const fragment = document.createDocumentFragment();
+        const tempDiv = document.createElement('div');
+        
+        tempDiv.innerHTML = suggestionChecks.map(check => this.createCheckHTML(check)).join('');
+        
+        while (tempDiv.firstChild) {
+            fragment.appendChild(tempDiv.firstChild);
+        }
+        
+        container.innerHTML = '';
+        container.appendChild(fragment);
+        
+        // Event delegation
+        this.attachCheckEventListeners(container, false);
     },
 
     /**
@@ -802,7 +812,6 @@ const UIHandler = {
     }
 };
 
-// Export برای استفاده در سایر ماژول‌ها
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = UIHandler;
 }
