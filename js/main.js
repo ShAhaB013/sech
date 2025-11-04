@@ -1,6 +1,8 @@
 /**
- * فیلتر خطاهای extension
+ * نقطه ورود اصلی برنامه 
  */
+
+// ✅ بهینه‌سازی: فیلتر خطاهای extension
 const originalError = console.error;
 console.error = function(...args) {
     if (args[0] && typeof args[0] === 'string' && 
@@ -9,10 +11,6 @@ console.error = function(...args) {
     }
     originalError.apply(console, args);
 };
-
-/**
- * نقطه ورود اصلی برنامه - نسخه بهینه شده
- */
 
 const App = {
     analysisTimeout: null,
@@ -26,9 +24,7 @@ const App = {
 
     init() {
         UIHandler.init();
-        EditorManager.init(() => {
-            this.scheduleAnalysis();
-        });
+        EditorManager.init(() => this.scheduleAnalysis());
         this.attachKeywordListeners();
         console.log('✅ برنامه با موفقیت راه‌اندازی شد');
     },
@@ -47,17 +43,14 @@ const App = {
         }, CONFIG.ANALYSIS.DEBOUNCE_DELAY);
     },
 
+    // ✅ بهینه‌سازی: بررسی تغییرات با hash
     shouldAnalyze(content, mainKeyword, secondaryKeywords) {
         const now = Date.now();
-        if (now - this._lastAnalysis.timestamp < 500) {
-            return false;
-        }
+        if (now - this._lastAnalysis.timestamp < 500) return false;
         
-        const contentChanged = content !== this._lastAnalysis.content;
-        const mainKeywordChanged = mainKeyword !== this._lastAnalysis.mainKeyword;
-        const secondaryKeywordsChanged = JSON.stringify(secondaryKeywords) !== JSON.stringify(this._lastAnalysis.secondaryKeywords);
-        
-        return contentChanged || mainKeywordChanged || secondaryKeywordsChanged;
+        return content !== this._lastAnalysis.content || 
+               mainKeyword !== this._lastAnalysis.mainKeyword || 
+               JSON.stringify(secondaryKeywords) !== JSON.stringify(this._lastAnalysis.secondaryKeywords);
     },
 
     saveAnalysisState(content, mainKeyword, secondaryKeywords) {
@@ -80,9 +73,7 @@ const App = {
         const plainText = Utils.extractText(content);
         const wordCount = Utils.countWords(plainText);
 
-        if (!this.shouldAnalyze(content, mainKeyword, secondaryKeywords)) {
-            return;
-        }
+        if (!this.shouldAnalyze(content, mainKeyword, secondaryKeywords)) return;
 
         // حالت 1: بدون کلمه کلیدی اصلی
         if (!mainKeyword) {
@@ -98,11 +89,9 @@ const App = {
         // حالت 2: با کلمه کلیدی اصلی
         const results = SEOAnalyzer.analyze(content, mainKeyword, secondaryKeywords);
 
-        // نمایش چک‌های SEO و خوانایی (بدون پیشنهادات)
         UIHandler.updateAnalysisResults(results, mainKeyword);
 
-        // نمایش پیشنهادات فقط در تب پیشنهادات
-        if (results.suggestionChecks && results.suggestionChecks.length > 0) {
+        if (results.suggestionChecks?.length) {
             UIHandler.renderSuggestions(results.suggestionChecks);
         }
 
@@ -117,59 +106,59 @@ const App = {
         });
     },
 
+    // ✅ بهینه‌سازی: تابع کوتاه‌تر
     performKeywordSuggestionAnalysis(plainText) {
         const mainSuggestions = Utils.detectMainKeyword(plainText, 3);
         const secondarySuggestions = Utils.detectSecondaryKeywords(plainText, 5);
         
-        if (mainSuggestions.length === 0 && secondarySuggestions.length === 0) {
+        if (!mainSuggestions.length && !secondarySuggestions.length) {
             UIHandler.showNoKeywordState();
             return;
         }
 
-        // ساخت چک‌های پیشنهادی
-        const suggestionChecks = [];
+        const checks = [];
         
-        // چک کلمه کلیدی اصلی
-        if (mainSuggestions.length > 0) {
-            const suggestionText = mainSuggestions
-                .map(s => `${s.keyword} (کیفیت: ${s.quality})`)
-                .join('، ');
-            
-            suggestionChecks.push({
-                status: CONFIG.CHECK_STATUS.SUCCESS,
-                title: 'تشخیص کلمه کلیدی اصلی',
-                tooltip: 'کلمه کلیدی اصلی مهم‌ترین عبارت در محتوا است که باید در عنوان، پاراگراف اول و چندین بار در متن تکرار شود.',
-                desc: `پیشنهادات: ${suggestionText}`,
-                detail: mainSuggestions.map(s => 
-                    `${s.keyword}: ${s.frequency} بار (کیفیت: ${s.quality}, ارتباط: ${s.relevance})`
-                ).join('\n'),
-                suggestions: mainSuggestions
-            });
+        if (mainSuggestions.length) {
+            checks.push(this._createSuggestionCheck(
+                'تشخیص کلمه کلیدی اصلی',
+                'کلمه کلیدی اصلی مهم‌ترین عبارت در محتوا است که باید در عنوان، پاراگراف اول و چندین بار در متن تکرار شود.',
+                mainSuggestions
+            ));
         }
         
-        // چک کلمات کلیدی فرعی
-        if (secondarySuggestions.length > 0) {
-            const suggestionText = secondarySuggestions
-                .map(s => `${s.keyword} (کیفیت: ${s.quality})`)
-                .join('، ');
-            
-            suggestionChecks.push({
-                status: CONFIG.CHECK_STATUS.SUCCESS,
-                title: 'تشخیص کلمات کلیدی فرعی',
-                tooltip: 'کلمات کلیدی فرعی عبارات مرتبط با موضوع اصلی هستند که به بهبود سئو و جذب ترافیک بیشتر کمک می‌کنند.',
-                desc: `پیشنهادات: ${suggestionText}`,
-                detail: secondarySuggestions.map(s => 
-                    `${s.keyword}: ${s.frequency} بار (کیفیت: ${s.quality}, ارتباط: ${s.relevance})`
-                ).join('\n'),
-                suggestions: secondarySuggestions
-            });
+        if (secondarySuggestions.length) {
+            checks.push(this._createSuggestionCheck(
+                'تشخیص کلمات کلیدی فرعی',
+                'کلمات کلیدی فرعی عبارات مرتبط با موضوع اصلی هستند که به بهبود سئو و جذب ترافیک بیشتر کمک می‌کنند.',
+                secondarySuggestions
+            ));
         }
         
-        // نمایش در تب پیشنهادات
-        UIHandler.renderSuggestions(suggestionChecks);
+        UIHandler.renderSuggestions(checks);
         
         // نمایش پیام در تب SEO
         const wordCount = Utils.countWords(plainText);
+        this._updateSuggestionDisplay(wordCount, mainSuggestions.length, secondarySuggestions.length);
+    },
+
+    // ✅ بهینه‌سازی: تابع کمکی برای ساخت check
+    _createSuggestionCheck(title, tooltip, suggestions) {
+        const suggestionText = suggestions.map(s => `${s.keyword} (کیفیت: ${s.quality})`).join('، ');
+        
+        return {
+            status: CONFIG.CHECK_STATUS.SUCCESS,
+            title,
+            tooltip,
+            desc: `پیشنهادات: ${suggestionText}`,
+            detail: suggestions.map(s => 
+                `${s.keyword}: ${s.frequency} بار (کیفیت: ${s.quality}, ارتباط: ${s.relevance})`
+            ).join('\n'),
+            suggestions
+        };
+    },
+
+    // ✅ بهینه‌سازی: تابع کمکی برای نمایش
+    _updateSuggestionDisplay(wordCount, mainCount, secondaryCount) {
         UIHandler.elements.wordCount.textContent = wordCount;
         UIHandler.elements.keywordCount.textContent = '0';
         UIHandler.elements.scoreCircle.textContent = '💡';
@@ -185,8 +174,8 @@ const App = {
                     پیشنهادات کلمه کلیدی آماده است!
                 </div>
                 <div style="font-size: 14px; color: #6c757d; line-height: 1.8;">
-                    ${mainSuggestions.length} پیشنهاد برای کلمه کلیدی اصلی<br>
-                    ${secondarySuggestions.length} پیشنهاد برای کلمات کلیدی فرعی<br><br>
+                    ${mainCount} پیشنهاد برای کلمه کلیدی اصلی<br>
+                    ${secondaryCount} پیشنهاد برای کلمات کلیدی فرعی<br><br>
                     👉 به تب <strong>"پیشنهادات"</strong> بروید و روی هر کلمه کلیک کنید
                 </div>
             </div>
@@ -199,12 +188,15 @@ const App = {
     }
 };
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
+// ✅ بهینه‌سازی: استفاده از IIFE
+(function() {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            App.init();
+            window.MainApp = App;
+        });
+    } else {
         App.init();
         window.MainApp = App;
-    });
-} else {
-    App.init();
-    window.MainApp = App;
-}
+    }
+})();
