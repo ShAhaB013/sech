@@ -283,30 +283,6 @@ const EditorManager = {
                 e.preventDefault();
             }
         });
-        
-        // بررسی وجود فایل‌های TinyMCE
-        this.checkTinyMCEResources();
-    },
-
-    /**
-     * بررسی وجود فایل‌های TinyMCE
-     */
-    checkTinyMCEResources() {
-        const requiredFiles = [
-            'tinymce/tinymce.min.js',
-            'tinymce/themes/silver/theme.min.js',
-            'tinymce/skins/ui/oxide/skin.min.css'
-        ];
-        
-        requiredFiles.forEach(file => {
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = file;
-            link.onerror = () => {
-                console.warn(`⚠️ فایل TinyMCE یافت نشد: ${file}`);
-            };
-            document.head.appendChild(link);
-        });
     }
 };
 
