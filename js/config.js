@@ -1,52 +1,37 @@
 /**
- * تنظیمات و ثابت‌های برنامه
+ * تنظیمات و ثابت‌های برنامه -
  */
 
 const CONFIG = {
     // محدودیت‌های SEO
     SEO_LIMITS: {
-        MIN_KEYWORD_DENSITY: 0.5,    // حداقل تراکم کلمه کلیدی (درصد)
-        MAX_KEYWORD_DENSITY: 2.5,    // حداکثر تراکم کلمه کلیدی (درصد)
-        MAX_SENTENCE_WORDS: 20,      // حداکثر تعداد کلمات در جمله
-        MAX_PARAGRAPH_WORDS: 150,    // حداکثر تعداد کلمات در پاراگراف
-        WORDS_PER_IMAGE: 350,        // تعداد کلمات به ازای هر تصویر
-        MAX_ACCEPTABLE_WORDS_PER_IMAGE: 400, // حداکثر تعداد کلمات به ازای هر تصویر
-        MIN_SECONDARY_KEYWORD_PERCENTAGE: 70 // حداقل درصد کلمات فرعی که باید در متن باشند
+        MIN_KEYWORD_DENSITY: 0.5,
+        MAX_KEYWORD_DENSITY: 2.5,
+        MAX_SENTENCE_WORDS: 20,
+        MAX_PARAGRAPH_WORDS: 150,
+        WORDS_PER_IMAGE: 350,
+        MAX_ACCEPTABLE_WORDS_PER_IMAGE: 400,
+        MIN_SECONDARY_KEYWORD_PERCENTAGE: 70
     },
 
     // امتیازبندی SEO
     SCORE_THRESHOLDS: {
-        EXCELLENT: 80,  // امتیاز عالی
-        GOOD: 60        // امتیاز خوب
+        EXCELLENT: 80,
+        GOOD: 60
     },
 
     // تنظیمات تحلیل
     ANALYSIS: {
-        DEBOUNCE_DELAY: 500  // تاخیر برای تحلیل خودکار (میلی‌ثانیه)
+        DEBOUNCE_DELAY: 500
     },
 
     // پیام‌های وضعیت
     MESSAGES: {
-        NO_KEYWORD: {
-            label: 'در انتظار...',
-            desc: 'لطفاً کلمه کلیدی اصلی را وارد کنید'
-        },
-        ANALYZING: {
-            label: 'در حال تحلیل...',
-            desc: 'لطفاً صبر کنید'
-        },
-        EXCELLENT: {
-            label: 'عالی!',
-            desc: 'محتوای شما بهینه است'
-        },
-        GOOD: {
-            label: 'خوب',
-            desc: 'نیاز به بهبود دارد'
-        },
-        POOR: {
-            label: 'ضعیف',
-            desc: 'محتوا نیاز به بهینه‌سازی دارد'
-        }
+        NO_KEYWORD: { label: 'در انتظار...', desc: 'لطفاً کلمه کلیدی اصلی را وارد کنید' },
+        ANALYZING: { label: 'در حال تحلیل...', desc: 'لطفاً صبر کنید' },
+        EXCELLENT: { label: 'عالی!', desc: 'محتوای شما بهینه است' },
+        GOOD: { label: 'خوب', desc: 'نیاز به بهبود دارد' },
+        POOR: { label: 'ضعیف', desc: 'محتوا نیاز به بهینه‌سازی دارد' }
     },
 
     // وضعیت‌های چک
@@ -65,18 +50,9 @@ const CONFIG = {
 
     // رنگ‌های وضعیت
     STATUS_COLORS: {
-        success: {
-            border: '#10b981',
-            background: 'rgba(16, 185, 129, 0.2)'
-        },
-        warning: {
-            border: '#f59e0b',
-            background: 'rgba(245, 158, 11, 0.2)'
-        },
-        error: {
-            border: '#ef4444',
-            background: 'rgba(239, 68, 68, 0.2)'
-        }
+        success: { border: '#10b981', background: 'rgba(16, 185, 129, 0.2)' },
+        warning: { border: '#f59e0b', background: 'rgba(245, 158, 11, 0.2)' },
+        error: { border: '#ef4444', background: 'rgba(239, 68, 68, 0.2)' }
     },
 
     // تنظیمات TinyMCE
@@ -101,7 +77,6 @@ const CONFIG = {
     }
 };
 
-// Export برای استفاده در سایر ماژول‌ها
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = CONFIG;
 }
