@@ -1,5 +1,5 @@
 /**
- * مدیریت رابط کاربری - نسخه بهینه شده
+ * مدیریت رابط کاربری
  */
 
 const UIHandler = {
@@ -17,36 +17,24 @@ const UIHandler = {
         this.initializeKeywordTags();
     },
 
-    /**
-     * ذخیره‌سازی المان‌های DOM
-     */
+    // ✅ بهینه‌سازی 1: کش کردن یکجا با reduce
     cacheElements() {
-        this.elements = {
-            scoreCircle: document.getElementById('scoreCircle'),
-            scoreLabel: document.getElementById('scoreLabel'),
-            scoreDesc: document.getElementById('scoreDesc'),
-            wordCount: document.getElementById('wordCount'),
-            keywordCount: document.getElementById('keywordCount'),
-            checksList: document.getElementById('checksList'),
-            readabilityChecks: document.getElementById('readabilityChecks'),
-            suggestionsContent: document.getElementById('suggestionsContent'),
-            infoModal: document.getElementById('infoModal'),
-            infoTitle: document.getElementById('infoTitle'),
-            infoBody: document.getElementById('infoBody'),
-            closeModalBtn: document.getElementById('closeModalBtn'),
-            mainKeyword: document.getElementById('mainKeyword'),
-            secondaryKeywords: document.getElementById('secondaryKeywords'),
-            keywordsTags: document.getElementById('keywordsTags'),
-            seoBadge: document.getElementById('seoBadge'),
-            readabilityBadge: document.getElementById('readabilityBadge'),
-            tabs: document.querySelectorAll('.seo-tab'),
-            tabContents: document.querySelectorAll('.seo-tab-content')
-        };
+        const ids = [
+            'scoreCircle', 'scoreLabel', 'scoreDesc', 'wordCount', 'keywordCount',
+            'checksList', 'readabilityChecks', 'suggestionsContent', 'infoModal',
+            'infoTitle', 'infoBody', 'closeModalBtn', 'mainKeyword',
+            'secondaryKeywords', 'keywordsTags', 'seoBadge', 'readabilityBadge'
+        ];
+        
+        this.elements = ids.reduce((acc, id) => {
+            acc[id] = document.getElementById(id);
+            return acc;
+        }, {});
+        
+        this.elements.tabs = document.querySelectorAll('.seo-tab');
+        this.elements.tabContents = document.querySelectorAll('.seo-tab-content');
     },
 
-    /**
-     * اتصال Event Listeners با Event Delegation
-     */
     attachEventListeners() {
         // بستن مودال
         this.elements.closeModalBtn.addEventListener('click', () => {
@@ -93,9 +81,6 @@ const UIHandler = {
         });
     },
 
-    /**
-     * تعویض تب
-     */
     switchTab(tabName) {
         // حذف active از همه تب‌ها
         this.elements.tabs.forEach(tab => {
@@ -127,17 +112,11 @@ const UIHandler = {
         }
     },
 
-    /**
-     * مقداردهی اولیه تگ‌های کلمات کلیدی
-     */
     initializeKeywordTags() {
         this.secondaryKeywordsArray = [];
         this.renderKeywordTags();
     },
 
-    /**
-     * افزودن تگ کلمه کلیدی جدید
-     */
     addKeywordTag() {
         const input = this.elements.secondaryKeywords;
         const keyword = input.value.trim();
@@ -166,9 +145,6 @@ const UIHandler = {
         }
     },
 
-    /**
-     * حذف آخرین تگ کلمه کلیدی
-     */
     removeLastKeywordTag() {
         if (this.secondaryKeywordsArray.length === 0) return;
 
@@ -181,9 +157,6 @@ const UIHandler = {
         }
     },
 
-    /**
-     * حذف تگ کلمه کلیدی خاص
-     */
     removeKeywordTag(keyword) {
         const index = this.secondaryKeywordsArray.indexOf(keyword);
         if (index > -1) {
@@ -197,9 +170,6 @@ const UIHandler = {
         }
     },
 
-    /**
-     * رندر کردن تگ‌های کلمات کلیدی با DocumentFragment (بهینه)
-     */
     renderKeywordTags() {
         const container = this.elements.keywordsTags;
         const fragment = document.createDocumentFragment();
@@ -229,9 +199,6 @@ const UIHandler = {
         container.appendChild(fragment);
     },
 
-    /**
-     * نمایش وضعیت بدون کلمه کلیدی
-     */
     showNoKeywordState() {
         this.elements.keywordCount.textContent = '0';
         this.elements.scoreCircle.textContent = '--';
@@ -246,9 +213,6 @@ const UIHandler = {
         }
     },
 
-    /**
-     * نمایش پیشنهادات کلمات کلیدی
-     */
     showKeywordSuggestions(suggestions, plainText) {
         const wordCount = Utils.countWords(plainText);
         
@@ -276,17 +240,10 @@ const UIHandler = {
         };
         
         this.elements.checksList.innerHTML = this.createCheckHTML(suggestionCheck);
-        
-        // Event delegation فقط یک بار - از طریق attachCheckEventListeners
         this.attachCheckEventListeners(this.elements.checksList, false);
-        
-        // پاک کردن بخش خوانایی
         this.elements.readabilityChecks.innerHTML = '';
     },
 
-    /**
-     * به‌روزرسانی نمایش نتایج تحلیل
-     */
     updateAnalysisResults(results, mainKeyword) {
         // به‌روزرسانی آمار
         this.elements.wordCount.textContent = results.totalWords;
@@ -308,9 +265,6 @@ const UIHandler = {
         }
     },
 
-    /**
-     * به‌روزرسانی نمایش امتیاز
-     */
     updateScore(score) {
         this.elements.scoreCircle.textContent = score;
 
@@ -332,13 +286,9 @@ const UIHandler = {
         this.elements.scoreDesc.textContent = message.desc;
     },
 
-    /**
-     * رندر کردن چک‌ها با Event Delegation (بهینه)
-     */
     renderChecks(checks, container) {
         const isReadabilitySection = container.id === 'readabilityChecks';
         
-        // استفاده از DocumentFragment برای عملکرد بهتر
         const fragment = document.createDocumentFragment();
         const tempDiv = document.createElement('div');
         
@@ -355,15 +305,10 @@ const UIHandler = {
         container.innerHTML = '';
         container.appendChild(fragment);
         
-        // Event delegation برای جلوگیری از multiple event listeners
         this.attachCheckEventListeners(container, isReadabilitySection);
     },
 
-    /**
-     * Event delegation برای چک‌ها (بهینه) - با چک امنیت
-     */
     attachCheckEventListeners(container, isReadabilitySection) {
-        // چک وجود container
         if (!container || !container.parentNode) {
             console.warn('⚠️ Container موجود نیست');
             return;
@@ -412,36 +357,14 @@ const UIHandler = {
         });
     },
 
-    /**
-     * ساخت HTML برای یک چک
-     */
+    // ✅ بهینه‌سازی 2: استفاده از template literals بهتر
     createCheckHTML(check) {
         const icon = CONFIG.STATUS_ICONS[check.status];
         const escapedTitle = Utils.escapeHtml(check.title);
         const escapedTooltip = Utils.escapeHtml(check.tooltip);
         
-        let suggestionsHTML = '';
-        if (check.suggestions && check.suggestions.length > 0) {
-            const suggestionsClass = check.title.includes('اصلی') ? 'main-keyword-suggestions' : 
-                                   check.title.includes('فرعی') ? 'secondary-keyword-suggestions' : 
-                                   'keyword-suggestions';
-            
-            suggestionsHTML = `
-                <div class="keyword-suggestions ${suggestionsClass}">
-                    ${check.suggestions.map(suggestion => `
-                        <div class="keyword-suggestion-item" data-keyword="${Utils.escapeHtml(suggestion.keyword)}">
-                            <div class="keyword-suggestion-text">${Utils.escapeHtml(suggestion.keyword)}</div>
-                            <div class="keyword-suggestion-meta">
-                                <span class="keyword-suggestion-count">${suggestion.frequency}</span>
-                                <span class="keyword-suggestion-type">${suggestion.type}</span>
-                                ${suggestion.quality ? `<span class="keyword-suggestion-quality">Q:${suggestion.quality}</span>` : ''}
-                                ${suggestion.relevance ? `<span class="keyword-suggestion-relevance">R:${suggestion.relevance}</span>` : ''}
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-        }
+        // ✅ بهینه‌سازی 3: جداسازی منطق suggestions
+        const suggestionsHTML = this._buildSuggestionsHTML(check);
         
         return `
             <div class="check-item">
@@ -457,9 +380,29 @@ const UIHandler = {
         `;
     },
 
-    /**
-     * ساخت HTML برای چک‌های خوانایی
-     */
+    // ✅ بهینه‌سازی 3: تابع جداگانه برای suggestions
+    _buildSuggestionsHTML(check) {
+        if (!check.suggestions || check.suggestions.length === 0) return '';
+        
+        const suggestionsClass = check.title.includes('اصلی') ? 'main-keyword-suggestions' : 
+                               check.title.includes('فرعی') ? 'secondary-keyword-suggestions' : 
+                               'keyword-suggestions';
+        
+        const items = check.suggestions.map(s => `
+            <div class="keyword-suggestion-item" data-keyword="${Utils.escapeHtml(s.keyword)}">
+                <div class="keyword-suggestion-text">${Utils.escapeHtml(s.keyword)}</div>
+                <div class="keyword-suggestion-meta">
+                    <span class="keyword-suggestion-count">${s.frequency}</span>
+                    <span class="keyword-suggestion-type">${s.type}</span>
+                    ${s.quality ? `<span class="keyword-suggestion-quality">Q:${s.quality}</span>` : ''}
+                    ${s.relevance ? `<span class="keyword-suggestion-relevance">R:${s.relevance}</span>` : ''}
+                </div>
+            </div>
+        `).join('');
+        
+        return `<div class="keyword-suggestions ${suggestionsClass}">${items}</div>`;
+    },
+
     createReadabilityCheckHTML(check) {
         const icon = CONFIG.STATUS_ICONS[check.status];
         const escapedTitle = Utils.escapeHtml(check.title);
@@ -486,51 +429,35 @@ const UIHandler = {
         `;
     },
 
-    /**
-     * نمایش مودال اطلاعات
-     */
     showInfoModal(title, body) {
         this.elements.infoTitle.innerHTML = title;
         this.elements.infoBody.innerHTML = body;
         this.elements.infoModal.classList.add('active');
     },
 
-    /**
-     * بستن مودال اطلاعات
-     */
     closeInfoModal() {
         this.elements.infoModal.classList.remove('active');
     },
 
-    /**
-     * اعمال هایلایت‌ها به محتوا با requestAnimationFrame (بهینه)
-     */
     applyHighlights() {
         const editor = window.editorInstance;
         if (!editor) return;
 
-        // استفاده از requestAnimationFrame برای رندر صاف‌تر
         requestAnimationFrame(() => {
             const body = editor.getBody();
             
-            // پاک کردن تمام هایلایت‌های قبلی
             this.clearHighlights(body);
             
-            // اعمال هایلایت پاراگراف‌ها
             if (this.highlightStates.paragraphs) {
                 this.highlightLongParagraphs(body);
             }
             
-            // اعمال هایلایت جملات
             if (this.highlightStates.sentences) {
                 this.highlightLongSentences(body);
             }
         });
     },
 
-    /**
-     * پاک کردن تمام هایلایت‌ها
-     */
     clearHighlights(body) {
         body.querySelectorAll('p').forEach(p => {
             p.style.background = '';
@@ -540,15 +467,12 @@ const UIHandler = {
             p.style.borderRadius = '';
             p.style.position = '';
             
-            // حذف برچسب‌های هشدار
             const badges = p.querySelectorAll('span[style*="position: absolute"]');
             badges.forEach(badge => badge.remove());
         });
     },
 
-    /**
-     * هایلایت پاراگراف‌های طولانی (بهینه شده با batch processing)
-     */
+    // ✅ بهینه‌سازی 4: استفاده از helper function
     highlightLongParagraphs(body) {
         const paragraphs = body.querySelectorAll('p');
         const batch = [];
@@ -572,9 +496,6 @@ const UIHandler = {
         });
     },
 
-    /**
-     * هایلایت جملات طولانی (بهینه شده با batch processing)
-     */
     highlightLongSentences(body) {
         const paragraphs = body.querySelectorAll('p');
         const batch = [];
@@ -607,15 +528,11 @@ const UIHandler = {
             }
         });
         
-        // اعمال استایل‌ها به صورت batch
         batch.forEach(({ element, wordCount, level }) => {
             this.applyHighlightStyle(element, wordCount, level, 'sentence');
         });
     },
 
-    /**
-     * اعمال استایل هایلایت (یکپارچه شده)
-     */
     applyHighlightStyle(element, wordCount, level, type) {
         const styles = {
             critical: {
@@ -660,9 +577,6 @@ const UIHandler = {
         element.appendChild(badge);
     },
 
-    /**
-     * فعال/غیرفعال کردن هایلایت خوانایی
-     */
     toggleReadabilityHighlight(type) {
         if (type === 'sentences') {
             this.highlightStates.sentences = !this.highlightStates.sentences;
@@ -670,7 +584,6 @@ const UIHandler = {
             this.highlightStates.paragraphs = !this.highlightStates.paragraphs;
         }
         
-        // به‌روزرسانی آیکون چشم
         const eyeIcon = document.querySelector(`[data-type="${type}"]`);
         if (eyeIcon) {
             eyeIcon.classList.toggle('active');
@@ -680,11 +593,7 @@ const UIHandler = {
         this.applyHighlights();
     },
 
-    /**
-     * مدیریت کلیک روی پیشنهاد کلمه کلیدی (بهبود یافته و دقیق)
-     */
     handleKeywordSuggestionClick(keyword) {
-        // تشخیص نوع پیشنهاد از روی DOM
         const clickedElement = event.target.closest('.keyword-suggestion-item');
         if (!clickedElement) return;
         
@@ -692,15 +601,12 @@ const UIHandler = {
         const isMainKeywordSuggestion = parentSuggestions && parentSuggestions.classList.contains('main-keyword-suggestions');
         const isSecondaryKeywordSuggestion = parentSuggestions && parentSuggestions.classList.contains('secondary-keyword-suggestions');
         
-        // منطق اضافه کردن
         if (isMainKeywordSuggestion) {
-            // پیشنهادات اصلی همیشه به باکس اصلی می‌روند
             this.elements.mainKeyword.value = keyword;
             this.elements.mainKeyword.focus();
             this.showTemporaryMessage('کلمه کلیدی اصلی تنظیم شد: ' + keyword, 'success');
             
         } else if (isSecondaryKeywordSuggestion) {
-            // پیشنهادات فرعی همیشه به باکس فرعی می‌روند
             if (!this.secondaryKeywordsArray.includes(keyword)) {
                 this.secondaryKeywordsArray.push(keyword);
                 this.renderKeywordTags();
@@ -711,7 +617,6 @@ const UIHandler = {
             }
             
         } else {
-            // پیشنهادات عمومی (بدون کلاس خاص)
             const currentMainKeyword = this.elements.mainKeyword.value.trim();
             
             if (!currentMainKeyword) {
@@ -735,9 +640,6 @@ const UIHandler = {
         }
     },
 
-    /**
-     * نمایش پیام موقت (بهینه شده)
-     */
     showTemporaryMessage(message, type = 'info') {
         const colors = {
             success: '#10b981',
@@ -776,15 +678,11 @@ const UIHandler = {
         }, 3000);
     },
 
-    /**
-     * رندر کردن پیشنهادات در تب پیشنهادات
-     */
     renderSuggestions(suggestionChecks) {
         const container = this.elements.suggestionsContent;
         
         if (!container) return;
         
-        // استفاده از DocumentFragment برای عملکرد بهتر
         const fragment = document.createDocumentFragment();
         const tempDiv = document.createElement('div');
         
@@ -797,13 +695,9 @@ const UIHandler = {
         container.innerHTML = '';
         container.appendChild(fragment);
         
-        // Event delegation
         this.attachCheckEventListeners(container, false);
     },
 
-    /**
-     * دریافت مقادیر کلمات کلیدی
-     */
     getKeywords() {
         return {
             mainKeyword: this.elements.mainKeyword.value.trim(),
