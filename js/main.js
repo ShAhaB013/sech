@@ -75,7 +75,7 @@ const App = {
 
         if (!this.shouldAnalyze(content, mainKeyword, secondaryKeywords)) return;
 
-        // حالت 1: بدون کلمه کلیدی اصلی
+        // حالت 1: بدون کلمه کلیدی اصلی - فقط پیشنهاد
         if (!mainKeyword) {
             if (wordCount > 50) {
                 this.performKeywordSuggestionAnalysis(plainText);
@@ -83,18 +83,13 @@ const App = {
                 UIHandler.showNoKeywordState();
             }
             this.saveAnalysisState(content, mainKeyword, secondaryKeywords);
-            return;
+            return; // خروج از تابع - فقط پیشنهاد نمایش داده شد
         }
 
-        // حالت 2: با کلمه کلیدی اصلی
+        // حالت 2: با کلمه کلیدی اصلی - فقط تحلیل SEO
         const results = SEOAnalyzer.analyze(content, mainKeyword, secondaryKeywords);
 
         UIHandler.updateAnalysisResults(results, mainKeyword);
-
-        if (results.suggestionChecks?.length) {
-            UIHandler.renderSuggestions(results.suggestionChecks);
-        }
-
         UIHandler.applyHighlights();
         this.saveAnalysisState(content, mainKeyword, secondaryKeywords);
 
