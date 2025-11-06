@@ -476,18 +476,75 @@ const Utils = {
         return enhanced;
     },
 
+    /**
+     * محاسبه ارتباط کلمه کلیدی (بهبود یافته)
+     */
     calculateRelevance(phrase, text) {
         let relevance = 0;
-        
         const temp = document.createElement('div');
         temp.innerHTML = text;
-        const headings = temp.querySelectorAll('h1, h2, h3');
-        headings.forEach(h => {
-            if (h.textContent.toLowerCase().includes(phrase.toLowerCase())) relevance += 3;
+        
+        // 1. وزن‌دهی سلسله‌مراتبی برای headings (0-15)
+        const h1 = temp.querySelectorAll('h1');
+        const h2 = temp.querySelectorAll('h2');
+        const h3 = temp.querySelectorAll('h3');
+        const h4h5h6 = temp.querySelectorAll('h4, h5, h6');
+        
+        // H1: وزن بالاترین
+        h1.forEach(h => {
+            if (h.textContent.toLowerCase().includes(phrase.toLowerCase())) 
+                relevance += 10;
         });
         
+        // H2: وزن متوسط
+        h2.forEach(h => {
+            if (h.textContent.toLowerCase().includes(phrase.toLowerCase())) 
+                relevance += 5;
+        });
+        
+        // H3: وزن کمتر
+        h3.forEach(h => {
+            if (h.textContent.toLowerCase().includes(phrase.toLowerCase())) 
+                relevance += 3;
+        });
+        
+        // H4-H6: وزن کم
+        h4h5h6.forEach(h => {
+            if (h.textContent.toLowerCase().includes(phrase.toLowerCase())) 
+                relevance += 1;
+        });
+        
+        // محدود کردن امتیاز headings به 15
+        const headingScore = Math.min(15, relevance);
+        relevance = headingScore;
+        
+        // 2. امتیاز پاراگراف اول (0-8)
         const firstPara = this.getFirstParagraph(text);
-        if (firstPara.toLowerCase().includes(phrase.toLowerCase())) relevance += 2;
+        if (firstPara.toLowerCase().includes(phrase.toLowerCase())) {
+            relevance += 8;
+        }
+        
+        // 3. تحلیل پراکندگی در کل متن (0-7)
+        const paragraphs = this.extractParagraphs(text);
+        if (paragraphs.length > 0) {
+            let paragraphsWithPhrase = 0;
+            paragraphs.forEach(p => {
+                if (p.toLowerCase().includes(phrase.toLowerCase())) {
+                    paragraphsWithPhrase++;
+                }
+            });
+            
+            // نسبت پاراگراف‌های دارای عبارت
+            const distribution = (paragraphsWithPhrase / paragraphs.length) * 100;
+            
+            if (distribution >= 40) relevance += 7; // پراکندگی عالی
+            else if (distribution >= 25) relevance += 5; // پراکندگی خوب
+            else if (distribution >= 15) relevance += 3; // پراکندگی متوسط
+            else if (distribution >= 5) relevance += 1; // پراکندگی ضعیف
+        }
+        
+        // نرمال‌سازی (حداکثر 30)
+        relevance = Math.min(30, relevance);
         
         return relevance;
     },
@@ -525,37 +582,60 @@ const Utils = {
         return secondaryKeywords.slice(0, maxSuggestions);
     },
 
+    /**
+     * محاسبه کیفیت کلمه کلیدی (بهبود یافته - بدون domain bias)
+     */
     calculateKeywordQuality(keyword, frequency, textContext = null) {
         let quality = 0;
         const wordCount = keyword.split(' ').length;
+        const totalWords = textContext ? Utils.countWords(Utils.extractText(textContext)) : 0;
         
-        if (wordCount === 4) quality += 5;
-        else if (wordCount === 3) quality += 4;
-        else if (wordCount === 2) quality += 3;
+        // 1. امتیاز تعداد کلمات (0-8)
+        if (wordCount === 4) quality += 8;
+        else if (wordCount === 3) quality += 6;
+        else if (wordCount === 2) quality += 4;
         else quality += 1;
         
-        if (frequency >= 5) quality += 2;
-        else if (frequency >= 3) quality += 1.5;
-        else if (frequency >= 2) quality += 1;
+        // 2. امتیاز فرکانس پیوسته (0-10)
+        // فرمول لگاریتمی برای جلوگیری از dominance فرکانس بالا
+        quality += Math.min(10, Math.log2(frequency + 1) * 2);
         
         if (textContext) {
+            // 3. امتیاز موقعیت در H1 (0-15)
             const h1Check = this.hasKeywordInSection(textContext, keyword, 'h1');
-            if (h1Check.found) quality += 10;
+            if (h1Check.found) {
+                quality += 15;
+            }
             
+            // 4. امتیاز موقعیت در سایر headings (0-8)
             const headingsText = this.extractTextFromHeadings(textContext);
-            if (this.findKeyword(headingsText, keyword).length > 0 && !h1Check.found) quality += 6;
+            const headingMatches = this.findKeyword(headingsText, keyword).length;
+            if (headingMatches > 0 && !h1Check.found) {
+                quality += Math.min(8, headingMatches * 3);
+            }
             
+            // 5. امتیاز پاراگراف اول (0-10)
             const firstPara = this.getFirstParagraph(textContext);
-            if (this.findKeyword(firstPara, keyword).length > 0) quality += 4;
+            if (this.findKeyword(firstPara, keyword).length > 0) {
+                quality += 10;
+            }
+            
+            // 6. امتیاز تراکم مناسب (0-5)
+            // تراکم ایده‌آل: 0.5-2.5%
+            if (totalWords > 0) {
+                const density = (frequency / totalWords) * 100;
+                if (density >= 0.5 && density <= 2.5) {
+                    quality += 5;
+                } else if (density >= 0.3 && density <= 3.5) {
+                    quality += 3;
+                }
+            }
         }
         
-        const importantWords = ['سئو', 'seo', 'بهینه‌سازی', 'گوگل', 'محتوا', 'بازاریابی', 'دیجیتال', 'وب', 'سایت', 'هوش مصنوعی', 'ai'];
-        if (importantWords.some(w => keyword.toLowerCase().includes(w.toLowerCase()))) quality += 3;
+        // نرمال‌سازی (حداکثر 45، حداقل 0)
+        quality = Math.max(0, Math.min(45, quality));
         
-        const irrelevantWords = ['است', 'بود', 'می', 'که', 'کن', 'محتوا', 'موجود', 'ویرایشگر'];
-        if (!irrelevantWords.some(w => keyword.toLowerCase().includes(w.toLowerCase()))) quality += 2;
-        
-        return quality;
+        return Math.round(quality);
     }
 };
 
