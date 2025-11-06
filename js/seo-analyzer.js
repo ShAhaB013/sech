@@ -19,8 +19,7 @@ const SEOAnalyzer = {
             keywordCount,
             keywordDensity,
             checks: this.performSEOChecks(content, plainText, mainKeyword, secondaryKeywords, totalWords, keywordCount, keywordDensity, totalWordsWithoutHeadings),
-            readabilityChecks: this.performReadabilityChecks(content, plainText),
-            suggestionChecks: this.performSuggestionChecks(plainText)
+            readabilityChecks: this.performReadabilityChecks(content, plainText)
         };
     },
 
@@ -456,73 +455,11 @@ const SEOAnalyzer = {
     },
 
     /**
-     * پیشنهادات کلمات کلیدی
-     */
-    performSuggestionChecks(plainText) {
-        const checks = [];
-        checks.push(this.detectMainKeyword(plainText));
-        checks.push(this.detectSecondaryKeywords(plainText));
-        return checks;
-    },
-
-    detectMainKeyword(plainText) {
-        const suggestions = Utils.detectMainKeyword(plainText, 5);
-        
-        if (suggestions.length === 0) {
-            return {
-                status: CONFIG.CHECK_STATUS.WARNING,
-                title: 'تشخیص کلمه کلیدی اصلی',
-                tooltip: 'کلمه کلیدی اصلی مهم‌ترین عبارت در محتوا است.',
-                desc: 'کلمه کلیدی مناسب یافت نشد',
-                detail: 'محتوا باید حداقل 200 کلمه باشد',
-                suggestions: []
-            };
-        }
-
-        const suggestionText = suggestions.map(s => `${s.keyword} (Q:${s.quality})`).join('، ');
-        return {
-            status: CONFIG.CHECK_STATUS.SUCCESS,
-            title: 'تشخیص کلمه کلیدی اصلی',
-            tooltip: 'کلمه کلیدی اصلی باید در عنوان و پاراگراف اول باشد.',
-            desc: `پیشنهادات: ${suggestionText}`,
-            detail: suggestions.map(s => `${s.keyword}: ${s.frequency} بار (Q:${s.quality}, R:${s.relevance})`).join('\n'),
-            suggestions
-        };
-    },
-
-    detectSecondaryKeywords(plainText) {
-        const suggestions = Utils.detectSecondaryKeywords(plainText, 10);
-        
-        if (suggestions.length === 0) {
-            return {
-                status: CONFIG.CHECK_STATUS.WARNING,
-                title: 'تشخیص کلمات کلیدی فرعی',
-                tooltip: 'کلمات فرعی به جذب ترافیک بیشتر کمک می‌کنند.',
-                desc: 'کلمه فرعی مناسب یافت نشد',
-                detail: 'محتوا باید شامل عبارات متنوع باشد',
-                suggestions: []
-            };
-        }
-
-        const suggestionText = suggestions.map(s => `${s.keyword} (Q:${s.quality})`).join('، ');
-        return {
-            status: CONFIG.CHECK_STATUS.SUCCESS,
-            title: 'تشخیص کلمات کلیدی فرعی',
-            tooltip: 'کلمات فرعی باید در متن پراکنده باشند.',
-            desc: `پیشنهادات: ${suggestionText}`,
-            detail: suggestions.map(s => `${s.keyword}: ${s.frequency} بار (Q:${s.quality}, R:${s.relevance})`).join('\n'),
-            suggestions
-        };
-    },
-
-    /**
      * محاسبه امتیاز
      */
     calculateScore(checks) {
         const scoreAffectingChecks = checks.filter(c => 
-            c.title !== 'لینک‌دهی با کلمات کلیدی' && 
-            c.title !== 'تشخیص کلمه کلیدی اصلی' &&
-            c.title !== 'تشخیص کلمات کلیدی فرعی'
+            c.title !== 'لینک‌دهی با کلمات کلیدی'
         );
         const successCount = scoreAffectingChecks.filter(c => c.status === CONFIG.CHECK_STATUS.SUCCESS).length;
         return Math.round((successCount / scoreAffectingChecks.length) * 100);
