@@ -8,11 +8,6 @@
     <!-- TinyMCE -->
     <script src="/0/tinymce/tinymce.min.js"></script>
     
-    <!-- Natural Language Processing Libraries -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/compromise@14.10.0/builds/compromise.min.js"></script> 
-    <script src="https://cdn.jsdelivr.net/npm/natural@6.5.0/lib/natural.min.js"></script>
-    -->
-    
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     
     <!-- Vazir Font CDN -->
@@ -32,14 +27,19 @@
 
     <!-- SEO Panel -->
     <div class="seo-panel">
-        <!-- Header -->
+        <!-- Header با Progress Bar -->
         <div class="seo-header">
             <h2>📊 تحلیل SEO</h2>
             <div class="seo-score">
-                <div class="score-circle" id="scoreCircle">--</div>
-                <div class="score-text">
-                    <h3 id="scoreLabel">در حال تحلیل...</h3>
-                    <p id="scoreDesc">لطفاً کلمه کلیدی را وارد کنید</p>
+                <div class="score-info">
+                    <div class="score-label-wrapper">
+                        <h3 id="scoreLabel">در حال تحلیل...</h3>
+                        <p id="scoreDesc">لطفاً کلمه کلیدی را وارد کنید</p>
+                    </div>
+                    <div class="score-value" id="scoreCircle">--</div>
+                </div>
+                <div class="score-progress-bar">
+                    <div class="score-progress-fill" style="width: 0%"></div>
                 </div>
             </div>
         </div>
