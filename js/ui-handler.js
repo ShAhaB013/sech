@@ -1,5 +1,5 @@
 /**
- * مدیریت رابط کاربری
+ * مدیریت رابط کاربری - بهبود یافته با رفع Memory Leak
  */
 
 const UIHandler = {
@@ -10,6 +10,14 @@ const UIHandler = {
 
     secondaryKeywordsArray: [],
     elements: {},
+    
+    // ✅ جدید: ذخیره reference به event listeners برای cleanup
+    eventListeners: {
+        modal: [],
+        tabs: [],
+        keywords: [],
+        checks: []
+    },
 
     init() {
         this.cacheElements();
@@ -17,7 +25,6 @@ const UIHandler = {
         this.initializeKeywordTags();
     },
 
-    // ✅ بهینه‌سازی 1: کش کردن یکجا با reduce
     cacheElements() {
         const ids = [
             'scoreCircle', 'scoreLabel', 'scoreDesc', 'wordCount', 'keywordCount',
@@ -35,70 +42,127 @@ const UIHandler = {
         this.elements.tabContents = document.querySelectorAll('.seo-tab-content');
     },
 
+    // ✅ بهبود: cleanup event listeners قبلی
+    cleanupEventListeners() {
+        // پاک کردن modal listeners
+        this.eventListeners.modal.forEach(({ element, type, handler }) => {
+            if (element) element.removeEventListener(type, handler);
+        });
+        this.eventListeners.modal = [];
+
+        // پاک کردن tab listeners
+        this.eventListeners.tabs.forEach(({ element, type, handler }) => {
+            if (element) element.removeEventListener(type, handler);
+        });
+        this.eventListeners.tabs = [];
+
+        // پاک کردن keyword listeners
+        this.eventListeners.keywords.forEach(({ element, type, handler }) => {
+            if (element) element.removeEventListener(type, handler);
+        });
+        this.eventListeners.keywords = [];
+
+        // پاک کردن check listeners
+        this.eventListeners.checks.forEach(({ element, type, handler }) => {
+            if (element) element.removeEventListener(type, handler);
+        });
+        this.eventListeners.checks = [];
+    },
+
     attachEventListeners() {
-        // بستن مودال
-        this.elements.closeModalBtn.addEventListener('click', () => {
-            this.closeInfoModal();
+        // پاک کردن listeners قبلی
+        this.cleanupEventListeners();
+
+        // Modal listeners
+        const closeModalHandler = () => this.closeInfoModal();
+        this.elements.closeModalBtn.addEventListener('click', closeModalHandler);
+        this.eventListeners.modal.push({
+            element: this.elements.closeModalBtn,
+            type: 'click',
+            handler: closeModalHandler
         });
 
-        // کلیک روی پس‌زمینه مودال
-        this.elements.infoModal.addEventListener('click', (e) => {
+        const modalClickHandler = (e) => {
             if (e.target.id === 'infoModal') {
                 this.closeInfoModal();
             }
+        };
+        this.elements.infoModal.addEventListener('click', modalClickHandler);
+        this.eventListeners.modal.push({
+            element: this.elements.infoModal,
+            type: 'click',
+            handler: modalClickHandler
         });
 
-        // کلید Escape برای بستن مودال
-        document.addEventListener('keydown', (e) => {
+        const escapeHandler = (e) => {
             if (e.key === 'Escape') {
                 this.closeInfoModal();
             }
+        };
+        document.addEventListener('keydown', escapeHandler);
+        this.eventListeners.modal.push({
+            element: document,
+            type: 'keydown',
+            handler: escapeHandler
         });
 
-        // مدیریت تب‌ها
+        // Tab listeners
         this.elements.tabs.forEach(tab => {
-            tab.addEventListener('click', (e) => {
+            const tabClickHandler = (e) => {
                 const tabName = e.currentTarget.getAttribute('data-tab');
                 this.switchTab(tabName);
+            };
+            tab.addEventListener('click', tabClickHandler);
+            this.eventListeners.tabs.push({
+                element: tab,
+                type: 'click',
+                handler: tabClickHandler
             });
         });
 
-        // مدیریت input کلمات کلیدی فرعی
-        this.elements.secondaryKeywords.addEventListener('keydown', (e) => {
+        // Keyword input listeners
+        const keydownHandler = (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 this.addKeywordTag();
             } else if (e.key === 'Backspace' && e.target.value === '') {
                 this.removeLastKeywordTag();
             }
+        };
+        this.elements.secondaryKeywords.addEventListener('keydown', keydownHandler);
+        this.eventListeners.keywords.push({
+            element: this.elements.secondaryKeywords,
+            type: 'keydown',
+            handler: keydownHandler
         });
 
-        // جلوگیری از submit فرم با Enter
-        this.elements.secondaryKeywords.addEventListener('keypress', (e) => {
+        const keypressHandler = (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
             }
+        };
+        this.elements.secondaryKeywords.addEventListener('keypress', keypressHandler);
+        this.eventListeners.keywords.push({
+            element: this.elements.secondaryKeywords,
+            type: 'keypress',
+            handler: keypressHandler
         });
     },
 
     switchTab(tabName) {
-        // حذف active از همه تب‌ها
         this.elements.tabs.forEach(tab => {
             tab.classList.remove('active');
         });
 
-        // حذف active از همه محتواها
         this.elements.tabContents.forEach(content => {
             content.classList.remove('active');
         });
 
-        // فعال کردن تب انتخاب شده
         const activeTab = document.querySelector(`[data-tab="${tabName}"]`);
         if (activeTab) {
             activeTab.classList.add('active');
         }
 
-        // فعال کردن محتوای مربوطه
         const tabContentMap = {
             'seo': 'seoTab',
             'readability': 'readabilityTab',
@@ -123,23 +187,16 @@ const UIHandler = {
 
         if (!keyword) return;
 
-        // بررسی تکراری نبودن
         if (this.secondaryKeywordsArray.includes(keyword)) {
             this.showTemporaryMessage('این کلمه قبلاً اضافه شده است', 'warning');
             input.value = '';
             return;
         }
 
-        // افزودن به آرایه
         this.secondaryKeywordsArray.push(keyword);
-        
-        // رندر مجدد تگ‌ها
         this.renderKeywordTags();
-
-        // پاک کردن input
         input.value = '';
 
-        // تریگر تحلیل
         if (window.MainApp && window.MainApp.scheduleAnalysis) {
             window.MainApp.scheduleAnalysis();
         }
@@ -151,7 +208,6 @@ const UIHandler = {
         this.secondaryKeywordsArray.pop();
         this.renderKeywordTags();
 
-        // تریگر تحلیل
         if (window.MainApp && window.MainApp.scheduleAnalysis) {
             window.MainApp.scheduleAnalysis();
         }
@@ -163,7 +219,6 @@ const UIHandler = {
             this.secondaryKeywordsArray.splice(index, 1);
             this.renderKeywordTags();
 
-            // تریگر تحلیل
             if (window.MainApp && window.MainApp.scheduleAnalysis) {
                 window.MainApp.scheduleAnalysis();
             }
@@ -207,7 +262,6 @@ const UIHandler = {
         this.elements.checksList.innerHTML = '';
         this.elements.readabilityChecks.innerHTML = '';
         
-        // پاک کردن تب پیشنهادات
         if (this.elements.suggestionsContent) {
             this.elements.suggestionsContent.innerHTML = '';
         }
@@ -216,18 +270,15 @@ const UIHandler = {
     showKeywordSuggestions(suggestions, plainText) {
         const wordCount = Utils.countWords(plainText);
         
-        // به‌روزرسانی آمار
         this.elements.wordCount.textContent = wordCount;
         this.elements.keywordCount.textContent = '0';
         
-        // نمایش امتیاز
         this.elements.scoreCircle.textContent = '💡';
         this.elements.scoreCircle.style.borderColor = '#667eea';
         this.elements.scoreCircle.style.background = 'rgba(102, 126, 234, 0.2)';
         this.elements.scoreLabel.textContent = 'پیشنهاد کلمات کلیدی';
         this.elements.scoreDesc.textContent = 'کلمات پرتکرار در متن یافت شد';
         
-        // نمایش پیشنهادات
         const suggestionCheck = {
             status: CONFIG.CHECK_STATUS.SUCCESS,
             title: 'پیشنهاد کلمات کلیدی',
@@ -245,45 +296,46 @@ const UIHandler = {
     },
 
     updateAnalysisResults(results, mainKeyword) {
-        // به‌روزرسانی آمار
         this.elements.wordCount.textContent = results.totalWords;
         this.elements.keywordCount.textContent = results.keywordCount;
 
-        // محاسبه امتیاز
         const score = SEOAnalyzer.calculateScore(results.checks);
         this.updateScore(score);
 
-        // نمایش چک‌های SEO
         this.renderChecks(results.checks, this.elements.checksList);
-
-        // نمایش چک‌های خوانایی
         this.renderChecks(results.readabilityChecks, this.elements.readabilityChecks);
 
-        // نمایش پیشنهادات (اگر موجود باشد)
         if (results.suggestionChecks && results.suggestionChecks.length > 0) {
             this.renderSuggestions(results.suggestionChecks);
         }
     },
 
     updateScore(score) {
+        // تنظیم عدد امتیاز
         this.elements.scoreCircle.textContent = score;
 
-        let colors, message;
+        let message, colorClass;
         if (score >= CONFIG.SCORE_THRESHOLDS.EXCELLENT) {
-            colors = CONFIG.STATUS_COLORS.success;
             message = CONFIG.MESSAGES.EXCELLENT;
+            colorClass = 'excellent';
         } else if (score >= CONFIG.SCORE_THRESHOLDS.GOOD) {
-            colors = CONFIG.STATUS_COLORS.warning;
             message = CONFIG.MESSAGES.GOOD;
+            colorClass = 'good';
         } else {
-            colors = CONFIG.STATUS_COLORS.error;
             message = CONFIG.MESSAGES.POOR;
+            colorClass = 'poor';
         }
 
-        this.elements.scoreCircle.style.borderColor = colors.border;
-        this.elements.scoreCircle.style.background = colors.background;
+        // آپدیت متن‌ها
         this.elements.scoreLabel.textContent = message.label;
         this.elements.scoreDesc.textContent = message.desc;
+        
+        // آپدیت progress bar
+        const progressFill = document.querySelector('.score-progress-fill');
+        if (progressFill) {
+            progressFill.style.width = score + '%';
+            progressFill.className = 'score-progress-fill ' + colorClass;
+        }
     },
 
     renderChecks(checks, container) {
@@ -308,28 +360,28 @@ const UIHandler = {
         this.attachCheckEventListeners(container, isReadabilitySection);
     },
 
+    // ✅ بهبود: استفاده از event delegation بدون clone
     attachCheckEventListeners(container, isReadabilitySection) {
         if (!container || !container.parentNode) {
             console.warn('⚠️ Container موجود نیست');
             return;
         }
 
-        // پاک کردن event listeners قبلی با clone
-        const newContainer = container.cloneNode(true);
-        container.parentNode.replaceChild(newContainer, container);
+        // پاک کردن listeners قدیمی این container
+        const oldListeners = this.eventListeners.checks.filter(
+            l => l.element === container
+        );
+        oldListeners.forEach(({ element, type, handler }) => {
+            element.removeEventListener(type, handler);
+        });
         
-        // به‌روزرسانی reference در elements
-        if (container.id === 'checksList') {
-            this.elements.checksList = newContainer;
-        } else if (container.id === 'readabilityChecks') {
-            this.elements.readabilityChecks = newContainer;
-        } else if (container.id === 'suggestionsContent') {
-            this.elements.suggestionsContent = newContainer;
-        }
+        // حذف از آرایه
+        this.eventListeners.checks = this.eventListeners.checks.filter(
+            l => l.element !== container
+        );
         
-        // اضافه کردن event listener جدید
-        newContainer.addEventListener('click', (e) => {
-            // کلیک روی آیکون اطلاعات
+        // اضافه کردن event listener جدید با delegation
+        const clickHandler = (e) => {
             const infoIcon = e.target.closest('.check-info');
             if (infoIcon) {
                 const title = infoIcon.getAttribute('data-title');
@@ -338,7 +390,6 @@ const UIHandler = {
                 return;
             }
             
-            // کلیک روی آیکون چشم (خوانایی)
             if (isReadabilitySection) {
                 const eyeIcon = e.target.closest('.readability-check-eye');
                 if (eyeIcon) {
@@ -348,22 +399,26 @@ const UIHandler = {
                 }
             }
             
-            // کلیک روی پیشنهاد کلمه کلیدی
             const suggestionItem = e.target.closest('.keyword-suggestion-item');
             if (suggestionItem) {
                 const keyword = suggestionItem.getAttribute('data-keyword');
                 this.handleKeywordSuggestionClick(keyword);
             }
+        };
+        
+        container.addEventListener('click', clickHandler);
+        this.eventListeners.checks.push({
+            element: container,
+            type: 'click',
+            handler: clickHandler
         });
     },
 
-    // ✅ بهینه‌سازی 2: استفاده از template literals بهتر
     createCheckHTML(check) {
         const icon = CONFIG.STATUS_ICONS[check.status];
         const escapedTitle = Utils.escapeHtml(check.title);
         const escapedTooltip = Utils.escapeHtml(check.tooltip);
         
-        // ✅ بهینه‌سازی 3: جداسازی منطق suggestions
         const suggestionsHTML = this._buildSuggestionsHTML(check);
         
         return `
@@ -380,7 +435,6 @@ const UIHandler = {
         `;
     },
 
-    // ✅ بهینه‌سازی 3: تابع جداگانه برای suggestions
     _buildSuggestionsHTML(check) {
         if (!check.suggestions || check.suggestions.length === 0) return '';
         
@@ -439,15 +493,23 @@ const UIHandler = {
         this.elements.infoModal.classList.remove('active');
     },
 
+    // ✅ بهبود شده: Performance optimization با batch processing
     applyHighlights() {
         const editor = window.editorInstance;
         if (!editor) return;
 
-        requestAnimationFrame(() => {
+        // استفاده از requestAnimationFrame برای بهینه‌سازی
+        if (this._highlightRAF) {
+            cancelAnimationFrame(this._highlightRAF);
+        }
+
+        this._highlightRAF = requestAnimationFrame(() => {
             const body = editor.getBody();
             
+            // پاک کردن highlights قبلی
             this.clearHighlights(body);
             
+            // اعمال highlights جدید
             if (this.highlightStates.paragraphs) {
                 this.highlightLongParagraphs(body);
             }
@@ -455,24 +517,37 @@ const UIHandler = {
             if (this.highlightStates.sentences) {
                 this.highlightLongSentences(body);
             }
-        });
-    },
-
-    clearHighlights(body) {
-        body.querySelectorAll('p').forEach(p => {
-            p.style.background = '';
-            p.style.borderRight = '';
-            p.style.borderBottom = '';
-            p.style.padding = '';
-            p.style.borderRadius = '';
-            p.style.position = '';
             
-            const badges = p.querySelectorAll('span[style*="position: absolute"]');
-            badges.forEach(badge => badge.remove());
+            this._highlightRAF = null;
         });
     },
 
-    // ✅ بهینه‌سازی 4: استفاده از helper function
+    // ✅ بهبود: پاک کردن سریع‌تر
+    clearHighlights(body) {
+        const paragraphs = body.querySelectorAll('p');
+        const batch = [];
+        
+        paragraphs.forEach(p => {
+            // ذخیره تغییرات در batch
+            batch.push(() => {
+                p.style.background = '';
+                p.style.borderRight = '';
+                p.style.borderBottom = '';
+                p.style.padding = '';
+                p.style.borderRadius = '';
+                p.style.position = '';
+            });
+            
+            // حذف badge ها
+            const badges = p.querySelectorAll('span[style*="position: absolute"]');
+            badges.forEach(badge => batch.push(() => badge.remove()));
+        });
+        
+        // اعمال batch
+        batch.forEach(fn => fn());
+    },
+
+    // ✅ بهبود: batch processing
     highlightLongParagraphs(body) {
         const paragraphs = body.querySelectorAll('p');
         const batch = [];
@@ -490,12 +565,13 @@ const UIHandler = {
             }
         });
         
-        // اعمال استایل‌ها به صورت batch
+        // اعمال استایل‌ها
         batch.forEach(({ element, wordCount, level }) => {
             this.applyHighlightStyle(element, wordCount, level, 'paragraph');
         });
     },
 
+    // ✅ بهبود: batch processing
     highlightLongSentences(body) {
         const paragraphs = body.querySelectorAll('p');
         const batch = [];
@@ -703,6 +779,14 @@ const UIHandler = {
             mainKeyword: this.elements.mainKeyword.value.trim(),
             secondaryKeywords: this.secondaryKeywordsArray
         };
+    },
+
+    // ✅ جدید: cleanup method برای زمان destroy
+    destroy() {
+        this.cleanupEventListeners();
+        if (this._highlightRAF) {
+            cancelAnimationFrame(this._highlightRAF);
+        }
     }
 };
 
