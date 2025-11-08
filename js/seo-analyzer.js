@@ -1,5 +1,5 @@
 /**
- * ماژول تحلیل SEO 
+ * ماژول تحلیل SEO - با نمره‌دهی دقیق‌تر
  */
 
 const SEOAnalyzer = {
@@ -52,6 +52,7 @@ const SEOAnalyzer = {
         checks.push(this.checkKeywordDensityInHeadings(content, mainKeyword));
         checks.push(this.checkSecondaryKeywords(plainText, secondaryKeywords));
         checks.push(this.checkImages(parsed.images, mainKeyword, secondaryKeywords, totalWords));
+        // ✅ رنگ آبی: حذف از محاسبه نمره (hasScore: false)
         checks.push(this.checkBlueKeyword(content, mainKeyword));
         checks.push(this.checkKeywordLinking(parsed.links, mainKeyword, secondaryKeywords));
 
@@ -79,7 +80,8 @@ const SEOAnalyzer = {
             title: 'کلمه کلیدی در عنوان (H1)',
             tooltip: 'عنوان اصلی باید شامل کلمه کلیدی باشد.',
             desc: found ? 'عنوان شامل کلمه کلیدی است ✓' : 'عنوان باید شامل کلمه کلیدی باشد',
-            detail: found ? `عنوان: "${Utils.displayText(text)}"` : null
+            detail: found ? `عنوان: "${Utils.displayText(text)}"` : null,
+            hasScore: true // ✅ در نمره تاثیر دارد
         };
     },
 
@@ -103,7 +105,8 @@ const SEOAnalyzer = {
             title: 'کلمه کلیدی در پاراگراف اول',
             tooltip: 'پاراگراف اول باید شامل کلمه کلیدی باشد.',
             desc: inFirstPara ? 'پاراگراف اول شامل کلمه کلیدی است ✓' : 'پاراگراف اول باید شامل کلمه کلیدی باشد',
-            detail: inFirstPara ? Utils.displayText(firstPara.substring(0, 80)) + '...' : null
+            detail: inFirstPara ? Utils.displayText(firstPara.substring(0, 80)) + '...' : null,
+            hasScore: true
         };
     },
 
@@ -131,7 +134,8 @@ const SEOAnalyzer = {
             title: 'تراکم کلمه کلیدی (متن)',
             tooltip: `تراکم مناسب بین ${MIN_KEYWORD_DENSITY}-${MAX_KEYWORD_DENSITY}% است.`,
             desc,
-            detail: `${keywordCount} بار از ${totalWordsWithoutHeadings} کلمه`
+            detail: `${keywordCount} بار از ${totalWordsWithoutHeadings} کلمه`,
+            hasScore: true
         };
     },
 
@@ -166,7 +170,8 @@ const SEOAnalyzer = {
             title: 'تراکم کلمه کلیدی (هدینگ‌ها)',
             tooltip: `تراکم مناسب در هدینگ‌ها بین ${MIN}-${MAX}% است.`,
             desc,
-            detail: totalWordsInHeadings > 0 ? `${keywordCountInHeadings} بار از ${totalWordsInHeadings} کلمه` : 'لطفاً هدینگ اضافه کنید'
+            detail: totalWordsInHeadings > 0 ? `${keywordCountInHeadings} بار از ${totalWordsInHeadings} کلمه` : 'لطفاً هدینگ اضافه کنید',
+            hasScore: true
         };
     },
 
@@ -180,7 +185,8 @@ const SEOAnalyzer = {
                 title: 'کلمات کلیدی فرعی',
                 tooltip: 'کلمات فرعی به جذب ترافیک بیشتر کمک می‌کنند.',
                 desc: 'کلمه فرعی تعریف نشده',
-                detail: 'لطفاً کلمات فرعی را وارد کنید'
+                detail: 'لطفاً کلمات فرعی را وارد کنید',
+                hasScore: true
             };
         }
 
@@ -193,7 +199,8 @@ const SEOAnalyzer = {
             title: 'کلمات کلیدی فرعی',
             tooltip: 'حداقل 70% کلمات فرعی باید در متن باشند.',
             desc: `${foundSecondary.length} از ${secondaryKeywords.length} کلمه در متن`,
-            detail: foundSecondary.length > 0 ? `یافت شده: ${foundSecondary.map(k => Utils.displayText(k)).join('، ')}` : null
+            detail: foundSecondary.length > 0 ? `یافت شده: ${foundSecondary.map(k => Utils.displayText(k)).join('، ')}` : null,
+            hasScore: true
         };
     },
 
@@ -207,7 +214,8 @@ const SEOAnalyzer = {
                 title: 'تصاویر',
                 tooltip: 'تصاویر باید alt داشته باشند و نسبت مناسبی داشته باشند.',
                 desc: 'هیچ تصویری وجود ندارد',
-                detail: 'لطفاً تصویر اضافه کنید'
+                detail: 'لطفاً تصویر اضافه کنید',
+                hasScore: true
             };
         }
         
@@ -258,12 +266,13 @@ const SEOAnalyzer = {
             title: 'تصاویر (Alt + نسبت)',
             tooltip: 'تصاویر باید alt با کلمه کلیدی داشته باشند. نسبت مناسب: هر 300-400 کلمه یک تصویر.',
             desc,
-            detail
+            detail,
+            hasScore: true
         };
     },
 
     /**
-     * چک رنگ آبی
+     * ✅ چک رنگ آبی - بدون نمره
      */
     checkBlueKeyword(content, mainKeyword) {
         const temp = document.createElement('div');
@@ -285,7 +294,8 @@ const SEOAnalyzer = {
             status: hasBlueKeyword ? CONFIG.CHECK_STATUS.SUCCESS : CONFIG.CHECK_STATUS.WARNING,
             title: 'رنگ آبی برای کلمه کلیدی',
             tooltip: 'رنگ آبی کلمه کلیدی را برجسته می‌کند.',
-            desc: hasBlueKeyword ? 'کلمه کلیدی به رنگ آبی است ✓' : 'توصیه: کلمه کلیدی را آبی کنید'
+            desc: hasBlueKeyword ? 'کلمه کلیدی به رنگ آبی است ✓' : 'توصیه: کلمه کلیدی را آبی کنید',
+            hasScore: false // ✅ در محاسبه نمره تاثیر ندارد
         };
     },
 
@@ -299,7 +309,8 @@ const SEOAnalyzer = {
                 title: 'لینک‌دهی با کلمات کلیدی',
                 tooltip: 'لینک‌ها باید با کلمات کلیدی مرتبط باشند.',
                 desc: 'هیچ لینکی وجود ندارد',
-                detail: 'توصیه: حداقل یک لینک با کلمه کلیدی اضافه کنید'
+                detail: 'توصیه: حداقل یک لینک با کلمه کلیدی اضافه کنید',
+                hasScore: true
             };
         }
 
@@ -330,12 +341,13 @@ const SEOAnalyzer = {
             title: 'لینک‌دهی با کلمات کلیدی',
             tooltip: 'حداقل 50% لینک‌ها باید با کلمات کلیدی مرتبط باشند.',
             desc,
-            detail: percentage < 50 ? 'توصیه: لینک‌های بیشتری با کلمات کلیدی اضافه کنید' : null
+            detail: percentage < 50 ? 'توصیه: لینک‌های بیشتری با کلمات کلیدی اضافه کنید' : null,
+            hasScore: true
         };
     },
 
     /**
-     * چک‌های خوانایی
+     * ✅ چک‌های خوانایی - با استاندارد Yoast
      */
     performReadabilityChecks(content, plainText) {
         return [
@@ -345,7 +357,7 @@ const SEOAnalyzer = {
     },
 
     /**
-     * چک طول جملات
+     * ✅ چک طول جملات - استاندارد Yoast (حداکثر 25% بلند)
      */
     checkSentenceLength(plainText) {
         const sentences = Utils.splitIntoSentences(plainText);
@@ -353,54 +365,55 @@ const SEOAnalyzer = {
             return {
                 status: CONFIG.CHECK_STATUS.WARNING,
                 title: 'طول جملات',
-                tooltip: 'جملات بلند (بیش از 20 کلمه) خوانایی را کاهش می‌دهند.',
+                tooltip: 'جملات بلند (بیش از 20 کلمه) خوانایی را کاهش می‌دهند. حداکثر 25% جملات می‌توانند بلند باشند.',
                 desc: 'هیچ جمله‌ای یافت نشد',
-                detail: null
+                detail: null,
+                hasScore: false // خوانایی در نمره SEO تاثیر ندارد
             };
         }
         
         const shortSentences = [];
         const mediumSentences = [];
         const longSentences = [];
-        const veryLongSentences = [];
         
         sentences.forEach(sentence => {
             const wordCount = Utils.countWords(sentence);
-            if (wordCount <= 12) shortSentences.push(sentence);
-            else if (wordCount <= 18) mediumSentences.push(sentence);
-            else if (wordCount <= 25) longSentences.push(sentence);
-            else veryLongSentences.push(sentence);
+            if (wordCount <= 15) shortSentences.push(sentence);
+            else if (wordCount <= 20) mediumSentences.push(sentence);
+            else longSentences.push(sentence); // بلند = بیش از 20 کلمه
         });
         
         const totalSentences = sentences.length;
-        const longPercentage = ((longSentences.length + veryLongSentences.length) / totalSentences) * 100;
+        const longPercentage = (longSentences.length / totalSentences) * 100;
         
+        // ✅ استاندارد Yoast: حداکثر 25% جملات بلند
         let status, desc;
-        if (veryLongSentences.length === 0 && longSentences.length <= 2) {
+        if (longPercentage <= 25) {
             status = CONFIG.CHECK_STATUS.SUCCESS;
-            desc = `✓ ${shortSentences.length + mediumSentences.length} جمله در طول مناسب`;
-        } else if (longPercentage > 30) {
+            desc = `✓ ${longPercentage.toFixed(1)}% جملات بلند (حداکثر 25%)`;
+        } else if (longPercentage <= 35) {
             status = CONFIG.CHECK_STATUS.WARNING;
-            desc = `${longSentences.length + veryLongSentences.length} جمله بلند (${longPercentage.toFixed(0)}%)`;
+            desc = `⚠️ ${longPercentage.toFixed(1)}% جملات بلند (توصیه: کمتر از 25%)`;
         } else {
-            status = CONFIG.CHECK_STATUS.WARNING;
-            desc = `${veryLongSentences.length} جمله خیلی بلند`;
+            status = CONFIG.CHECK_STATUS.ERROR;
+            desc = `✕ ${longPercentage.toFixed(1)}% جملات بلند (بسیار زیاد!)`;
         }
         
-        const stats = `کوتاه: ${shortSentences.length} | متوسط: ${mediumSentences.length} | بلند: ${longSentences.length} | خیلی بلند: ${veryLongSentences.length}`;
+        const stats = `کوتاه (≤15): ${shortSentences.length} | متوسط (16-20): ${mediumSentences.length} | بلند (>20): ${longSentences.length}`;
         
         return {
             status,
             title: 'طول جملات',
-            tooltip: 'حداقل 70% جملات باید کمتر از 20 کلمه باشند.',
+            tooltip: 'حداکثر 25% از جملات می‌توانند بیش از 20 کلمه داشته باشند.',
             desc,
             detail: stats,
-            longSentences: [...longSentences, ...veryLongSentences]
+            longSentences: longSentences,
+            hasScore: false
         };
     },
 
     /**
-     * چک طول پاراگراف‌ها
+     * ✅ چک طول پاراگراف‌ها - استاندارد Yoast (حداکثر 25% بلند)
      */
     checkParagraphLength(content) {
         const paragraphs = Utils.extractParagraphs(content);
@@ -408,59 +421,62 @@ const SEOAnalyzer = {
             return {
                 status: CONFIG.CHECK_STATUS.WARNING,
                 title: 'طول پاراگراف‌ها',
-                tooltip: 'پاراگراف‌های بلند (بیش از 150 کلمه) خواننده را خسته می‌کنند.',
+                tooltip: 'پاراگراف‌های بلند (بیش از 150 کلمه) خواننده را خسته می‌کنند. حداکثر 25% پاراگراف‌ها می‌توانند بلند باشند.',
                 desc: 'هیچ پاراگرافی یافت نشد',
-                detail: null
+                detail: null,
+                hasScore: false
             };
         }
         
         const shortParagraphs = [];
         const mediumParagraphs = [];
         const longParagraphs = [];
-        const veryLongParagraphs = [];
         
         paragraphs.forEach(paragraph => {
             const wordCount = Utils.countWords(paragraph);
-            if (wordCount <= 50) shortParagraphs.push({ text: paragraph, wordCount });
-            else if (wordCount <= 100) mediumParagraphs.push({ text: paragraph, wordCount });
-            else if (wordCount <= 150) longParagraphs.push({ text: paragraph, wordCount });
-            else veryLongParagraphs.push({ text: paragraph, wordCount });
+            if (wordCount <= 100) shortParagraphs.push({ text: paragraph, wordCount });
+            else if (wordCount <= 150) mediumParagraphs.push({ text: paragraph, wordCount });
+            else longParagraphs.push({ text: paragraph, wordCount }); // بلند = بیش از 150 کلمه
         });
         
         const totalParagraphs = paragraphs.length;
-        const longPercentage = ((longParagraphs.length + veryLongParagraphs.length) / totalParagraphs) * 100;
+        const longPercentage = (longParagraphs.length / totalParagraphs) * 100;
         
+        // ✅ استاندارد Yoast: حداکثر 25% پاراگراف‌های بلند
         let status, desc;
-        if (veryLongParagraphs.length === 0 && longParagraphs.length <= 1) {
+        if (longPercentage <= 25) {
             status = CONFIG.CHECK_STATUS.SUCCESS;
-            desc = `✓ ${shortParagraphs.length + mediumParagraphs.length} پاراگراف در طول مناسب`;
-        } else if (longPercentage > 40) {
+            desc = `✓ ${longPercentage.toFixed(1)}% پاراگراف بلند (حداکثر 25%)`;
+        } else if (longPercentage <= 35) {
             status = CONFIG.CHECK_STATUS.WARNING;
-            desc = `${longParagraphs.length + veryLongParagraphs.length} پاراگراف بلند (${longPercentage.toFixed(0)}%)`;
+            desc = `⚠️ ${longPercentage.toFixed(1)}% پاراگراف بلند (توصیه: کمتر از 25%)`;
         } else {
-            status = CONFIG.CHECK_STATUS.WARNING;
-            desc = `${veryLongParagraphs.length} پاراگراف خیلی بلند`;
+            status = CONFIG.CHECK_STATUS.ERROR;
+            desc = `✕ ${longPercentage.toFixed(1)}% پاراگراف بلند (بسیار زیاد!)`;
         }
         
-        const stats = `کوتاه: ${shortParagraphs.length} | متوسط: ${mediumParagraphs.length} | بلند: ${longParagraphs.length} | خیلی بلند: ${veryLongParagraphs.length}`;
+        const stats = `کوتاه (≤100): ${shortParagraphs.length} | متوسط (101-150): ${mediumParagraphs.length} | بلند (>150): ${longParagraphs.length}`;
         
         return {
             status,
             title: 'طول پاراگراف‌ها',
-            tooltip: 'حداقل 70% پاراگراف‌ها باید کمتر از 100 کلمه باشند.',
+            tooltip: 'حداکثر 25% از پاراگراف‌ها می‌توانند بیش از 150 کلمه داشته باشند.',
             desc,
             detail: stats,
-            longParagraphs: [...longParagraphs, ...veryLongParagraphs]
+            longParagraphs: longParagraphs,
+            hasScore: false
         };
     },
 
     /**
-     * محاسبه امتیاز
+     * ✅ محاسبه امتیاز - فقط چک‌های با hasScore: true
      */
     calculateScore(checks) {
-        const scoreAffectingChecks = checks.filter(c => 
-            c.title !== 'لینک‌دهی با کلمات کلیدی'
-        );
+        // فیلتر چک‌های با امتیاز
+        const scoreAffectingChecks = checks.filter(c => c.hasScore !== false);
+        
+        if (scoreAffectingChecks.length === 0) return 0;
+        
         const successCount = scoreAffectingChecks.filter(c => c.status === CONFIG.CHECK_STATUS.SUCCESS).length;
         return Math.round((successCount / scoreAffectingChecks.length) * 100);
     }
