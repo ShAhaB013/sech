@@ -1,5 +1,5 @@
 /**
- * توابع کمکی و Utilities 
+ * توابع کمکی و Utilities - بهبود یافته
  */
 
 // Regex های از پیش کامپایل شده (بهینه‌سازی)
@@ -9,33 +9,48 @@ const REGEX = {
     multiSpace: /\s+/g,
     digitOnly: /^[\d\s\u200c]+$/,
     punctuation: /[.,،؛:;!؟?\-_)(}{[\]«»""'']/g,
-    sentenceEnders: /([.!?؟۔]\s+|[.!?؟۔]$)/g,
+    // ✅ بهبود: جداکننده‌های جمله فارسی دقیق‌تر
+    sentenceEnders: /([.!?؟۔]\s+)|([.!?؟۔]$)|([.!?؟۔](?=\n))/g,
     punctuationOnly: /^[.!?؟۔\s]+$/,
     persianChars: /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF\u200C\u200D]/,
     englishChars: /[a-zA-Z]/,
-    cleanupFull: /[^\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF\u200C\u0020a-zA-Z0-9]/g
+    cleanupFull: /[^\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF\u200C\u0020a-zA-Z0-9]/g,
+    // ✅ جدید: نیم‌فاصله‌های متعدد
+    multipleZWNJ: /\u200c{2,}/g,
+    // ✅ جدید: نیم‌فاصله قبل/بعد فاصله
+    zwnjaroundSpace: /\u200c\s+|\s+\u200c/g
 };
 
 const Utils = {
     /**
-     * نرمال‌سازی متن
+     * ✅ بهبود: نرمال‌سازی نیم‌فاصله
+     */
+    normalizeZWNJ(text) {
+        if (!text) return '';
+        return text
+            .replace(REGEX.multipleZWNJ, '\u200c') // چند نیم‌فاصله -> یک نیم‌فاصله
+            .replace(REGEX.zwnjaroundSpace, ' '); // نیم‌فاصله + فاصله -> فاصه
+    },
+
+    /**
+     * ✅ بهبود: نرمال‌سازی متن با مدیریت بهتر نیم‌فاصله
      */
     normalizeText(text) {
         if (!text) return '';
+        text = this.normalizeZWNJ(text);
         return text
-            .replace(/\u200c/g, '\u200c')
-            .replace(/\u200d/g, '')
-            .replace(/\u00a0/g, ' ')
-            .replace(/[\t\r\n]+/g, ' ')
-            .replace(REGEX.multiSpace, ' ')
+            .replace(/\u200d/g, '') // حذف ZWJ
+            .replace(/\u00a0/g, ' ') // تبدیل NBSP به فاصله
+            .replace(/[\t\r\n]+/g, ' ') // تبدیل tab/newline به فاصله
+            .replace(REGEX.multiSpace, ' ') // چند فاصله -> یک فاصله
             .trim()
             .toLowerCase();
     },
 
     normalizeTextForSearch(text) {
         if (!text) return '';
+        text = this.normalizeZWNJ(text);
         return text
-            .replace(/\u200c/g, '\u200c')
             .replace(/\u200d/g, '')
             .replace(/\u00a0/g, ' ')
             .replace(/[\t\r\n]+/g, ' ')
@@ -44,6 +59,7 @@ const Utils = {
     },
 
     displayText(text) {
+        // نمایش نیم‌فاصله با کاراکتر قابل مشاهده
         return text.replace(/\u200c/g, '‌');
     },
 
@@ -53,7 +69,8 @@ const Utils = {
     extractText(html) {
         const div = document.createElement('div');
         div.innerHTML = html;
-        return div.textContent || div.innerText || '';
+        const text = div.textContent || div.innerText || '';
+        return this.normalizeZWNJ(text);
     },
 
     extractTextWithoutHeadings(html) {
@@ -61,7 +78,8 @@ const Utils = {
         div.innerHTML = html;
         const headings = div.querySelectorAll('h1, h2, h3, h4, h5, h6');
         headings.forEach(heading => heading.remove());
-        return div.textContent || div.innerText || '';
+        const text = div.textContent || div.innerText || '';
+        return this.normalizeZWNJ(text);
     },
 
     extractTextFromHeadings(html) {
@@ -72,20 +90,24 @@ const Utils = {
         headings.forEach(heading => {
             headingsText += (heading.textContent || heading.innerText || '') + ' ';
         });
-        return headingsText.trim();
+        return this.normalizeZWNJ(headingsText.trim());
     },
 
     /**
-     * شمارش کلمات
+     * ✅ بهبود: شمارش کلمات با مدیریت بهتر نیم‌فاصله
      */
     countWords(text) {
         if (!text || text.trim().length === 0) return 0;
         
         text = text
             .replace(REGEX.htmlTags, ' ')
-            .replace(/\u200c/g, '\u200c')
             .replace(/\u200d/g, '')
-            .replace(/\u00a0/g, ' ')
+            .replace(/\u00a0/g, ' ');
+        
+        // نرمال‌سازی نیم‌فاصله
+        text = this.normalizeZWNJ(text);
+        
+        text = text
             .replace(REGEX.cleanup, ' ')
             .replace(REGEX.multiSpace, ' ')
             .trim();
@@ -99,12 +121,13 @@ const Utils = {
     },
 
     /**
-     * تقسیم به کلمات
+     * ✅ بهبود: تقسیم به کلمات
      */
     splitIntoWords(text) {
         if (!text || text.trim().length === 0) return [];
         
         text = text.replace(REGEX.htmlTags, ' ');
+        text = this.normalizeZWNJ(text);
         text = text
             .replace(/\u200d/g, '')
             .replace(/\u00a0/g, ' ')
@@ -175,30 +198,113 @@ const Utils = {
     },
 
     /**
-     * تقسیم به جملات
+     * ✅ بهبود کامل: تقسیم به جملات فارسی با دقت بالا
      */
     splitIntoSentences(text) {
-        text = text.trim().replace(REGEX.multiSpace, ' ');
-        let sentences = text
-            .split(REGEX.sentenceEnders)
-            .filter(s => s && s.trim().length > 0)
-            .filter(s => !REGEX.punctuationOnly.test(s))
-            .map(s => s.trim());
+        if (!text || text.trim().length === 0) return [];
         
-        const mergedSentences = [];
-        for (let i = 0; i < sentences.length; i++) {
+        // نرمال‌سازی اولیه
+        text = this.normalizeZWNJ(text);
+        text = text.trim().replace(REGEX.multiSpace, ' ');
+        
+        // الگوهای پایان جمله در فارسی
+        const sentences = [];
+        let currentSentence = '';
+        let i = 0;
+        
+        while (i < text.length) {
+            const char = text[i];
+            const nextChar = text[i + 1];
+            const prevChar = text[i - 1];
+            
+            currentSentence += char;
+            
+            // شناسایی پایان جمله
+            const isEnder = /[.!?؟۔]/.test(char);
+            
+            if (isEnder) {
+                // بررسی استثناها
+                const isAbbreviation = this.isAbbreviation(text, i);
+                const isDecimal = /\d/.test(prevChar) && /\d/.test(nextChar);
+                const isEllipsis = char === '.' && text[i + 1] === '.' && text[i + 2] === '.';
+                
+                // اگر واقعاً پایان جمله است
+                if (!isAbbreviation && !isDecimal && !isEllipsis) {
+                    // اضافه کردن فاصله‌های بعدی (اگر هست)
+                    while (i + 1 < text.length && /\s/.test(text[i + 1])) {
+                        i++;
+                        currentSentence += text[i];
+                    }
+                    
+                    // ذخیره جمله
+                    const trimmed = currentSentence.trim();
+                    if (trimmed.length > 0 && !REGEX.punctuationOnly.test(trimmed)) {
+                        sentences.push(trimmed);
+                    }
+                    currentSentence = '';
+                }
+            }
+            
+            i++;
+        }
+        
+        // جمله آخر (اگر باقی مانده)
+        if (currentSentence.trim().length > 0) {
+            const trimmed = currentSentence.trim();
+            if (!REGEX.punctuationOnly.test(trimmed)) {
+                sentences.push(trimmed);
+            }
+        }
+        
+        // ادغام جملات خیلی کوتاه
+        return this.mergeTooShortSentences(sentences);
+    },
+
+    /**
+     * ✅ جدید: تشخیص اختصارات
+     */
+    isAbbreviation(text, dotPosition) {
+        // اختصارات رایج
+        const abbreviations = [
+            'د.', 'م.', 'ک.', 'ص.', 'ج.', 'ر.ک', 'ه.ش', 'ه.ق',
+            'Dr.', 'Mr.', 'Mrs.', 'Ms.', 'Prof.', 'etc.', 'e.g.', 'i.e.'
+        ];
+        
+        // بررسی 5 کاراکتر قبل و بعد
+        const start = Math.max(0, dotPosition - 5);
+        const end = Math.min(text.length, dotPosition + 5);
+        const context = text.substring(start, end);
+        
+        return abbreviations.some(abbr => context.includes(abbr));
+    },
+
+    /**
+     * ✅ جدید: ادغام جملات خیلی کوتاه
+     */
+    mergeTooShortSentences(sentences) {
+        const merged = [];
+        let i = 0;
+        
+        while (i < sentences.length) {
             const sentence = sentences[i];
             const wordCount = this.countWords(sentence);
             
+            // اگر جمله کمتر از 3 کلمه دارد و جمله بعدی هم هست
             if (wordCount < 3 && i < sentences.length - 1) {
                 sentences[i + 1] = sentence + ' ' + sentences[i + 1];
             } else if (sentence.length > 0) {
-                mergedSentences.push(sentence);
+                merged.push(sentence);
             }
+            i++;
         }
-        return mergedSentences.filter(s => this.countWords(s) > 0);
+        
+        // فیلتر نهایی
+        return merged.filter(s => this.countWords(s) > 0);
     },
 
+    /**
+     * تحلیل پیچیدگی جمله
+     */
     analyzeSentenceComplexity(sentence) {
         const wordCount = this.countWords(sentence);
         const charCount = sentence.replace(REGEX.multiSpace, '').length;
@@ -289,10 +395,12 @@ const Utils = {
     },
 
     /**
-     * استخراج کلمات (بهینه شده)
+     * ✅ بهبود: استخراج کلمات با مدیریت نیم‌فاصله
      */
     extractWords(text) {
         if (!text) return [];
+        
+        text = this.normalizeZWNJ(text);
         
         const cleanText = text
             .replace(/\u200d/g, '')
@@ -433,7 +541,7 @@ const Utils = {
     },
 
     /**
-     * پیشنهاد کلمات کلیدی (ساده شده)
+     * پیشنهاد کلمات کلیدی
      */
     suggestKeywords(text, maxSuggestions = 10) {
         const wordCounts = this.countWordFrequencies(text);
@@ -477,7 +585,7 @@ const Utils = {
     },
 
     /**
-     * محاسبه ارتباط کلمه کلیدی (بهبود یافته)
+     * محاسبه ارتباط کلمه کلیدی
      */
     calculateRelevance(phrase, text) {
         let relevance = 0;
@@ -490,31 +598,26 @@ const Utils = {
         const h3 = temp.querySelectorAll('h3');
         const h4h5h6 = temp.querySelectorAll('h4, h5, h6');
         
-        // H1: وزن بالاترین
         h1.forEach(h => {
             if (h.textContent.toLowerCase().includes(phrase.toLowerCase())) 
                 relevance += 10;
         });
         
-        // H2: وزن متوسط
         h2.forEach(h => {
             if (h.textContent.toLowerCase().includes(phrase.toLowerCase())) 
                 relevance += 5;
         });
         
-        // H3: وزن کمتر
         h3.forEach(h => {
             if (h.textContent.toLowerCase().includes(phrase.toLowerCase())) 
                 relevance += 3;
         });
         
-        // H4-H6: وزن کم
         h4h5h6.forEach(h => {
             if (h.textContent.toLowerCase().includes(phrase.toLowerCase())) 
                 relevance += 1;
         });
         
-        // محدود کردن امتیاز headings به 15
         const headingScore = Math.min(15, relevance);
         relevance = headingScore;
         
@@ -534,16 +637,14 @@ const Utils = {
                 }
             });
             
-            // نسبت پاراگراف‌های دارای عبارت
             const distribution = (paragraphsWithPhrase / paragraphs.length) * 100;
             
-            if (distribution >= 40) relevance += 7; // پراکندگی عالی
-            else if (distribution >= 25) relevance += 5; // پراکندگی خوب
-            else if (distribution >= 15) relevance += 3; // پراکندگی متوسط
-            else if (distribution >= 5) relevance += 1; // پراکندگی ضعیف
+            if (distribution >= 40) relevance += 7;
+            else if (distribution >= 25) relevance += 5;
+            else if (distribution >= 15) relevance += 3;
+            else if (distribution >= 5) relevance += 1;
         }
         
-        // نرمال‌سازی (حداکثر 30)
         relevance = Math.min(30, relevance);
         
         return relevance;
@@ -583,7 +684,7 @@ const Utils = {
     },
 
     /**
-     * محاسبه کیفیت کلمه کلیدی (بهبود یافته - بدون domain bias)
+     * محاسبه کیفیت کلمه کلیدی
      */
     calculateKeywordQuality(keyword, frequency, textContext = null) {
         let quality = 0;
@@ -597,7 +698,6 @@ const Utils = {
         else quality += 1;
         
         // 2. امتیاز فرکانس پیوسته (0-10)
-        // فرمول لگاریتمی برای جلوگیری از dominance فرکانس بالا
         quality += Math.min(10, Math.log2(frequency + 1) * 2);
         
         if (textContext) {
@@ -621,7 +721,6 @@ const Utils = {
             }
             
             // 6. امتیاز تراکم مناسب (0-5)
-            // تراکم ایده‌آل: 0.5-2.5%
             if (totalWords > 0) {
                 const density = (frequency / totalWords) * 100;
                 if (density >= 0.5 && density <= 2.5) {
